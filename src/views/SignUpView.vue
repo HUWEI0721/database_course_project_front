@@ -159,6 +159,18 @@ export default {
                     role: this.SignUpForm.userType === 'user' ? 'user' : 'coach',
                 };
 
+                // 首先检查验证码是否正确
+                if (this.SignUpForm.verifyCode !== this.vcode) {
+                    ElNotification({
+                        message: "验证码错误，请重新输入",
+                        type: 'error',
+                        duration: 2000
+                    });
+                    // 清空验证码字段
+                    this.SignUpForm.verifyCode = '';
+                    return; // 终止注册流程
+                }
+
                 const response = await axios.post(`http://localhost:8080/api/User/Register`, requestData);
 
                 // 判断后端返回的响应内容
