@@ -112,7 +112,13 @@ export default
 
                     console.log("发送请求的数据: ", requestData);
 
-                    const response = await axios.post(`http://localhost:8080/api/UserContoller/Login`, requestData);
+                    const response = await axios.get(`http://localhost:8080/api/User/Login`, {
+                        params: {
+                            email: requestData.email,
+                            password: requestData.password,
+                            role: requestData.role
+                        }
+                    });
                     console.log("收到响应的数据: ", response.data.message);
 
                     const message = response.data.message;

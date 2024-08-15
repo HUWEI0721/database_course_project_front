@@ -8,7 +8,7 @@ const router = createRouter({
   routes: [
     // 登录界面
     {
-      path: '/',
+      path: '/login',
       name: 'LoginView',
       component: LoginView
     },
@@ -20,7 +20,7 @@ const router = createRouter({
     },
     // 论坛界面
     {
-      path: '/forum',
+      path: '/',
       name: 'ForumView',
       component: ForumView
     },

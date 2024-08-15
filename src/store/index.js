@@ -5,99 +5,13 @@ import { createStore } from 'vuex'
 export default createStore({
     state: {
         role: localStorage.getItem('role') || 'unAuthenticated',
-        username: localStorage.getItem('username') || '',
+        userID: localStorage.getItem('userID') || '',
         token: localStorage.getItem('token') || '',
         recipe: localStorage.getItem('recipe') || '',
         // role: 'unAuthenticated',
         // username: '',
         // token: '',
-        posts: [
-            {
-                id: 1,
-                title: "帖子标题1",
-                snippet: "帖子内容摘要...",
-                content: "这是帖子详细内容...",
-                author: "用户1",
-                category: "帖子类别1",
-                likes: 10,
-                views: 100,
-                liked: false,
-                comments: [],
-                media: null,
-            },
-            {
-                id: 2,
-                title: "帖子标题2",
-                snippet: "帖子内容摘要...",
-                content: "这是帖子详细内容...",
-                author: "用户2",
-                category: "帖子类别2",
-                likes: 15,
-                views: 200,
-                liked: false,
-                comments: [],
-                media: null,
-            },
-            // 更多帖子数据...
-        ],
-        hotPosts: [
-            {
-                id: 1,
-                title: "热帖1",
-                snippet: "帖子内容摘要...",
-                content: "这是帖子详细内容...",
-                author: "用户1",
-                category: "帖子类别1",
-                likes: 10,
-                views: 100,
-                liked: false,
-                comments: [],
-                media: null,
-            },
-            {
-                id: 2,
-                title: "热帖2",
-                snippet: "帖子内容摘要...",
-                content: "这是帖子详细内容...",
-                author: "用户2",
-                category: "帖子类别2",
-                likes: 15,
-                views: 200,
-                liked: false,
-                comments: [],
-                media: null,
-            },
-            // 更多帖子数据...
-        ],
-        relatedPosts: [
-            {
-                id: 1,
-                title: "其他帖子1",
-                snippet: "帖子内容摘要...",
-                content: "这是帖子详细内容...",
-                author: "用户1",
-                category: "帖子类别1",
-                likes: 10,
-                views: 100,
-                liked: false,
-                comments: [],
-                media: null,
-            },
-            {
-                id: 2,
-                title: "其他帖子2",
-                snippet: "帖子内容摘要...",
-                content: "这是帖子详细内容...",
-                author: "用户2",
-                category: "帖子类别2",
-                likes: 15,
-                views: 200,
-                liked: false,
-                comments: [],
-                media: null,
-            },
-            // 更多帖子数据...
-        ]
+        categories: ["全部帖子", "健身计划", "饮食营养", "健身打卡", "健身问答", "健身挑战", "设备器材", "健身分享", "活动赛事", "初学指南",]
     },
     mutations: {
         setRole(state, role) {
@@ -105,9 +19,9 @@ export default createStore({
             // 将数据保存到 LocalStorage
             localStorage.setItem('role', role);
         },
-        setUsername(state, username) {
-            state.username = username;
-            localStorage.setItem('username', username);
+        setUserID(state, userID) {
+            state.userID = userID;
+            localStorage.setItem('userID', userID);
         },
         setToken(state, token) {
             state.token = token;

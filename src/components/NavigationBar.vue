@@ -43,6 +43,8 @@
     align-items: center;
     margin-left: 30%;
     padding: 5px 5px;
+    position: relative;
+    z-index: 100;
 }
 
 .wrapper nav {
