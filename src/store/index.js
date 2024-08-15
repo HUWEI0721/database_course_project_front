@@ -7,7 +7,7 @@ export default createStore({
         role: localStorage.getItem('role') || 'unAuthenticated',
         userID: localStorage.getItem('userID') || '',
         token: localStorage.getItem('token') || '',
-        recipe: localStorage.getItem('recipe') || '',
+        name: localStorage.getItem('name') || '',
         // role: 'unAuthenticated',
         // username: '',
         // token: '',
@@ -27,14 +27,11 @@ export default createStore({
             state.token = token;
             localStorage.setItem('token', token);
         },
-        setRecipe(state, recipe) {
-            state.recipe = recipe;
-            localStorage.setItem('recipe', recipe);
+        setName(state, name) {
+            state.name = name;
+            localStorage.setItem('name', name);
         },
-        removeRecipe(state, recipe) {
-            state.recipe = undefined;
-            localStorage.removeItem('recipe');
-        },
+
         updatePost(state, updatedPost) {
             const index = state.posts.findIndex(post => post.id === updatedPost.id);
             if (index !== -1) {

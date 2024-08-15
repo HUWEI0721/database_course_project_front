@@ -55,6 +55,7 @@
 </template>
 
 <script>
+import store from "@/store";
 import axios from "axios";
 import { ElNotification } from "element-plus";
 
@@ -179,6 +180,7 @@ export default {
 
                 // 判断后端返回的响应内容
                 if (response.data.message === "成功注册") {
+                    store.commit('setName', this.SignUpForm.name)
                     console.log('注册成功');
                     ElNotification({
                         message: "注册成功",

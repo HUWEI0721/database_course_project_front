@@ -76,17 +76,17 @@
                         <icon-arrow-right />
                     </button>
                 </nav>
-                <EditArticle v-model:title="newPost.postTitle" v-model:content="newPost.postContent"
-                    v-model:category="newPost.postCategory" @add-post="addPost" />
+                <EditArticle v-model:title="newPost.title" v-model:content="newPost.content"
+                    v-model:category="newPost.category" @add-post="addPost" />
 
                 <!-- 帖子列表部分 -->
                 <div v-for="post in filteredPosts" :key="post.postID" class="post-item">
                     <div class="post-content">
-                        <h3 class="post-title" @click="viewPost(post.postID)">{{ post.postTitle }}</h3>
-                        <p class="post-snippet">{{ post.postContent }}</p>
+                        <h3 class="post-title" @click="viewPost(post.postID)">{{ post.title }}</h3>
+                        <p class="post-snippet">{{ post.content }}</p>
                     </div>
                     <div class="post-footer">
-                        <span class="post-author">{{ post.userID }}</span>
+                        <span class="post-author">{{ post.name }}</span>
                         <span class="post-actions">
                             <icon-thumb-up @click="toggleLike(post.postID)" class="icon-with-text">
                                 <span>{{ post.liked ? '取消' : '点赞' }} {{ post.likesCount }}</span>
@@ -95,7 +95,7 @@
                                 <span>{{ getCommentCount(post.postID) }}</span>
                             </icon-message>
                             <icon-eye class="icon-with-text">
-                                <span>{{ post.views }}</span>
+                                <span>{{ post.forwardCount }}</span>
                             </icon-eye>
                         </span>
                     </div>
@@ -117,7 +117,7 @@
                         <el-divider />
                         <el-text v-for="hotPost in hotPosts" :key="hotPost.postID" @click="viewPost(hotPost.postID)"
                             class="hot-post-title">
-                            <icon-fire class="icon-fire-small" /> {{ hotPost.postTitle }}
+                            <icon-fire class="icon-fire-small" /> {{ hotPost.title }}
                         </el-text>
                         <el-divider />
                     </div>
@@ -152,12 +152,44 @@ export default {
     data() {
         return {
             newPost: {
-                postTitle: '',
-                postContent: '',
-                postCategory: '',
+                postID: -1,
+                userID: -1,
+                title: '',
+                content: '',
+                category: '',
+                postTime: '',
+                likesCount: 0,
+                forwardCount: 0,
+                commentsCount: 0,
+                refrencepostID: -1,
             },
             allPosts: [], // 将初始数据移除，依赖fetchAllPosts填充
-            filteredPosts: [],
+            filteredPosts: [{
+                postID: 1,
+                title: "帖子标题1",
+                snippet: "帖子内容摘要...",
+                content: "这是帖子详细内容...",
+                name: "用户1",
+                category: "健身计划",
+                likesCount: 10,
+                forwardCount: 100,
+                liked: false,
+                comments: [],
+                media: null,
+            },
+            {
+                postID: 2,
+                title: "帖子标题2",
+                snippet: "帖子内容摘要...",
+                content: "这是帖子详细内容...",
+                name: "用户2",
+                category: "健身问答",
+                forwardCount: 15,
+                likesCount: 200,
+                liked: false,
+                comments: [],
+                media: null,
+            },],
             hotPosts: [],  // 热帖数组
             selectedCategory: "全部帖子", // 初始选中的类别
             currentIndex: 0,
@@ -236,7 +268,7 @@ export default {
             if (category === "全部帖子") {
                 this.filteredPosts = this.allPosts;
             } else {
-                this.filteredPosts = this.allPosts.filter(post => post.postCategory === category);
+                this.filteredPosts = this.allPosts.filter(post => post.category === category);
             }
             this.updateHotPosts(); // 更新热帖
         },
@@ -244,10 +276,10 @@ export default {
         /**
          * 获取评论数并返回，该操作不会改变filteredPosts内容
          */
-        getCommentCount(postId) {
+        getCommentCount(postID) {
             const token = this.$store.state.token; // 从 Vuex 获取 token
-            return axios.get('http://localhost:8080/api/Comment/GetCommentByPostID', {
-                params: { postID: postId },
+            return axios.get('http://localhost:8080/api/Comment/GetCommentBypostID', {
+                params: { postID: postID },
                 headers: {
                     Authorization: `Bearer ${token}`
                 }
@@ -271,21 +303,21 @@ export default {
         /**
          * 查看帖子详情
          */
-        viewPost(postId) {
-            this.$router.push({ name: 'PostDetail', params: { id: postId } });
+        viewPost(postID) {
+            this.$router.push({ name: 'PostDetail', params: { postID: postID } });
         },
 
         /**
          * 点赞或取消点赞操作，并更新allPosts和filteredPosts中对应帖子的点赞数
          */
-        toggleLike(postId) {
+        toggleLike(postID) {
             const token = this.$store.state.token; // 从 Vuex 获取 token
-            const post = this.allPosts.find(p => p.postID === postId);
+            const post = this.allPosts.find(p => p.postID === postID);
             console.log(post.likesCount);
             if (post) {
                 if (post.liked) {
                     axios.delete('http://localhost:8080/api/PostContoller/CancleLikePost', {
-                        params: { postID: postId },
+                        params: { postID: postID },
                         headers: {
                             Authorization: `Bearer ${token}`
                         }
@@ -300,7 +332,7 @@ export default {
                         });
                 } else {
                     axios.post('http://localhost:8080/api/Post/likePost', null, {
-                        params: { postID: postId },
+                        params: { postID: postID },
                         headers: {
                             Authorization: `Bearer ${token}`
                         }
@@ -322,18 +354,18 @@ export default {
          */
         addPost() {
             const token = this.$store.state.token; // 从 Vuex 获取 token
-            if (this.newPost.postTitle && this.newPost.postContent && this.newPost.postCategory) {
+            if (this.newPost.title && this.newPost.content && this.newPost.category) {
                 const newPost = {
                     postID: -1,
                     userID: -1,
-                    postTitle: this.newPost.postTitle,
-                    postContent: this.newPost.postContent,
-                    postCategory: this.newPost.postCategory,
+                    title: this.newPost.title,
+                    content: this.newPost.content,
+                    category: this.newPost.category,
                     postTime: new Date().toISOString(),
                     likesCount: 0,
                     forwardCount: 0,
                     commentsCount: 0,
-                    refrencePostID: -1,
+                    refrencepostID: -1,
                 };
                 console.log("发布的帖子数据:", newPost);
                 axios.post('http://localhost:8080/api/Post/PublishPost', newPost, {
@@ -358,9 +390,9 @@ export default {
 
         resetNewPostForm() {
             this.newPost = {
-                postTitle: '',
-                postContent: '',
-                postCategory: '',
+                title: '',
+                content: '',
+                category: '',
             };
             // 重新触发绑定，更新 EditArticle 中的表单内容
             this.$forceUpdate(); // 强制 Vue 更新，确保数据同步
@@ -370,18 +402,18 @@ export default {
     /**
      * 删除帖子，并更新allPosts和filteredPosts
      */
-    deletePost(postId) {
+    deletePost(postID) {
         const token = this.$store.state.token; // 从 Vuex 获取 token
-        axios.delete('http://localhost:8080/api/Post/DeletePostByPostID', {
-            params: { postID: postId },
+        axios.delete('http://localhost:8080/api/Post/DeletePostBypostID', {
+            params: { postID: postID },
             headers: {
                 Authorization: `Bearer ${token}`
             }
         })
             .then(response => {
                 console.log(response.data.message);
-                this.allPosts = this.allPosts.filter(post => post.postID !== postId);
-                this.filteredPosts = this.filteredPosts.filter(post => post.postID !== postId);
+                this.allPosts = this.allPosts.filter(post => post.postID !== postID);
+                this.filteredPosts = this.filteredPosts.filter(post => post.postID !== postID);
                 this.updateHotPosts(); // 更新热帖
             })
             .catch(error => {
