@@ -164,32 +164,7 @@ export default {
                 commentsCount: 0,
                 refrencepostID: -1,
             },
-            allPosts: [{
-                postID: 1,
-                title: "帖子标题1",
-                snippet: "帖子内容摘要...",
-                content: "这是帖子详细内容...",
-                userID: "用户1",
-                category: "健身计划",
-                likesCount: 10,
-                forwardCount: 100,
-                liked: false,
-                comments: [],
-                media: null,
-            },
-            {
-                postID: 2,
-                title: "帖子标题2",
-                snippet: "帖子内容摘要...",
-                content: "这是帖子详细内容...",
-                userID: "用户2",
-                category: "健身计划",
-                likesCount: 10,
-                forwardCount: 100,
-                liked: false,
-                comments: [],
-                media: null,
-            },], // 将初始数据移除，依赖fetchAllPosts填充
+            allPosts: [], // 将初始数据移除，依赖fetchAllPosts填充
             filteredPosts: [],
             hotPosts: [],  // 热帖数组
             selectedCategory: "全部帖子", // 初始选中的类别

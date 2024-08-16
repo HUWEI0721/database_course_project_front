@@ -3,6 +3,7 @@ import LoginView from '@/views/LoginView.vue'
 import SignUpView from '@/views/SignUpView.vue'
 import ForumView from '@/views/ForumView.vue'
 import PostDetail from '@/views/PostDetail.vue'
+import UserProfile from '@/views/UserProfile.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -21,8 +22,8 @@ const router = createRouter({
     },
     // 论坛界面
     {
-      //path: '/forum',
-      path: '/',
+      path: '/forum',
+      //path: '/',
       name: 'ForumView',
       component: ForumView
     },
@@ -32,6 +33,14 @@ const router = createRouter({
       //path: '/',
       name: 'PostDetail',
       component: PostDetail,
+      props: true
+    },
+    // 用户信息界面
+    {
+      //path: '/user/:userID',
+      path: '/',
+      name: 'UserProfile',
+      component: UserProfile,
       props: true
     }
 
