@@ -21,6 +21,7 @@ const router = createRouter({
     },
     // 论坛界面
     {
+      //path: '/forum',
       path: '/',
       name: 'ForumView',
       component: ForumView
@@ -28,6 +29,7 @@ const router = createRouter({
     // 帖子细节界面
     {
       path: '/post/:postID',
+      //path: '/',
       name: 'PostDetail',
       component: PostDetail,
       props: true

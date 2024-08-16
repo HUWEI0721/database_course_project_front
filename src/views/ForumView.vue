@@ -86,7 +86,7 @@
                         <p class="post-snippet">{{ post.content }}</p>
                     </div>
                     <div class="post-footer">
-                        <span class="post-author">{{ post.name }}</span>
+                        <span class="post-author">{{ post.userID }}</span>
                         <span class="post-actions">
                             <icon-thumb-up @click="toggleLike(post.postID)" class="icon-with-text">
                                 <span>{{ post.liked ? '取消' : '点赞' }} {{ post.likesCount }}</span>
@@ -133,9 +133,10 @@ import { mapState } from 'vuex';
 import NavigationBar from '@/components/NavigationBar.vue';
 import EditArticle from '@/components/EditArticle.vue';
 import { IconThumbUp, IconMessage, IconEye, IconDelete, IconCalendar, IconTrophy, IconArrowRight, IconFire, IconHome } from '@arco-design/web-vue/es/icon';
+import { postMixin } from '@/mixins/postMixin.js';
 
 export default {
-
+    mixins: [postMixin],
     components: {
         NavigationBar,
         EditArticle,
@@ -163,13 +164,12 @@ export default {
                 commentsCount: 0,
                 refrencepostID: -1,
             },
-            allPosts: [], // 将初始数据移除，依赖fetchAllPosts填充
-            filteredPosts: [{
+            allPosts: [{
                 postID: 1,
                 title: "帖子标题1",
                 snippet: "帖子内容摘要...",
                 content: "这是帖子详细内容...",
-                name: "用户1",
+                userID: "用户1",
                 category: "健身计划",
                 likesCount: 10,
                 forwardCount: 100,
@@ -182,14 +182,15 @@ export default {
                 title: "帖子标题2",
                 snippet: "帖子内容摘要...",
                 content: "这是帖子详细内容...",
-                name: "用户2",
-                category: "健身问答",
-                forwardCount: 15,
-                likesCount: 200,
+                userID: "用户2",
+                category: "健身计划",
+                likesCount: 10,
+                forwardCount: 100,
                 liked: false,
                 comments: [],
                 media: null,
-            },],
+            },], // 将初始数据移除，依赖fetchAllPosts填充
+            filteredPosts: [],
             hotPosts: [],  // 热帖数组
             selectedCategory: "全部帖子", // 初始选中的类别
             currentIndex: 0,
@@ -213,9 +214,21 @@ export default {
             this.currentIndex = (this.currentIndex + 1) % this.categories.length;
         },
 
+        fetchAllPosts() {
+            const token = this.$store.state.token; // 从 Vuex 获取 token
+            this.getAllPosts(token)
+                .then(response => {
+                    this.filteredPosts = this.allPosts; // 确保初始展示所有帖子
+                    this.updateHotPosts(); // 确保初始展示热帖
+                })
+                .catch(error => {
+                    console.error('获取帖子时发生错误:', error);
+                });
+        },
+
         /**
-         * 获取所有帖子，并更新allPosts和filteredPosts以便展示
-         */
+        * 获取所有帖子，并更新allPosts和filteredPosts以便展示
+        */
         getAllPosts(token) {
             return axios.get('http://localhost:8080/api/Post/GetAllPost', {
                 headers: {
@@ -236,31 +249,6 @@ export default {
         },
 
         /**
-         * 初始化获取所有帖子
-         */
-        fetchAllPosts() {
-            const token = this.$store.state.token; // 从 Vuex 获取 token
-            this.getAllPosts(token)
-                .then(response => {
-                    this.filteredPosts = this.allPosts; // 确保初始展示所有帖子
-                    this.updateHotPosts(); // 确保初始展示热帖
-                })
-                .catch(error => {
-                    console.error('获取帖子时发生错误:', error);
-                });
-        },
-
-        /**
-         * 更新热帖数组，按浏览量排序并取前10个
-         */
-        updateHotPosts() {
-            this.hotPosts = this.allPosts
-                .slice()
-                .sort((a, b) => b.views - a.views)
-                .slice(0, 10);
-        },
-
-        /**
          * 根据所选分类筛选帖子，并更新filteredPosts
          */
         filterByCategory(category) {
@@ -270,83 +258,7 @@ export default {
             } else {
                 this.filteredPosts = this.allPosts.filter(post => post.category === category);
             }
-            this.updateHotPosts(); // 更新热帖
-        },
-
-        /**
-         * 获取评论数并返回，该操作不会改变filteredPosts内容
-         */
-        getCommentCount(postID) {
-            const token = this.$store.state.token; // 从 Vuex 获取 token
-            return axios.get('http://localhost:8080/api/Comment/GetCommentBypostID', {
-                params: { postID: postID },
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            })
-                .then(response => {
-                    console.log("收到的评论数据:", response.data);
-                    const comments = response.data;
-                    const countComments = (comments) => {
-                        return comments.reduce((acc, comment) => {
-                            return acc + 1 + countComments(comment.replies);
-                        }, 0);
-                    };
-                    return countComments(comments);
-                })
-                .catch(error => {
-                    console.error('获取评论时发生错误:', error);
-                    return 0;
-                });
-        },
-
-        /**
-         * 查看帖子详情
-         */
-        viewPost(postID) {
-            this.$router.push({ name: 'PostDetail', params: { postID: postID } });
-        },
-
-        /**
-         * 点赞或取消点赞操作，并更新allPosts和filteredPosts中对应帖子的点赞数
-         */
-        toggleLike(postID) {
-            const token = this.$store.state.token; // 从 Vuex 获取 token
-            const post = this.allPosts.find(p => p.postID === postID);
-            console.log(post.likesCount);
-            if (post) {
-                if (post.liked) {
-                    axios.delete('http://localhost:8080/api/PostContoller/CancleLikePost', {
-                        params: { postID: postID },
-                        headers: {
-                            Authorization: `Bearer ${token}`
-                        }
-                    })
-                        .then(() => {
-                            post.likesCount -= 1;
-                            post.liked = false;
-                            this.updateHotPosts(); // 更新热帖
-                        })
-                        .catch(error => {
-                            console.error('取消点赞时发生错误:', error);
-                        });
-                } else {
-                    axios.post('http://localhost:8080/api/Post/likePost', null, {
-                        params: { postID: postID },
-                        headers: {
-                            Authorization: `Bearer ${token}`
-                        }
-                    })
-                        .then(() => {
-                            post.likesCount += 1;
-                            post.liked = true;
-                            this.updateHotPosts(); // 更新热帖
-                        })
-                        .catch(error => {
-                            console.error('点赞时发生错误:', error);
-                        });
-                }
-            }
+            // this.updateHotPosts(); // 更新热帖
         },
 
         /**
@@ -396,29 +308,40 @@ export default {
             };
             // 重新触发绑定，更新 EditArticle 中的表单内容
             this.$forceUpdate(); // 强制 Vue 更新，确保数据同步
-        }
-    },
+        },
 
-    /**
-     * 删除帖子，并更新allPosts和filteredPosts
-     */
-    deletePost(postID) {
-        const token = this.$store.state.token; // 从 Vuex 获取 token
-        axios.delete('http://localhost:8080/api/Post/DeletePostBypostID', {
-            params: { postID: postID },
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
-        })
-            .then(response => {
-                console.log(response.data.message);
-                this.allPosts = this.allPosts.filter(post => post.postID !== postID);
-                this.filteredPosts = this.filteredPosts.filter(post => post.postID !== postID);
-                this.updateHotPosts(); // 更新热帖
+
+        /**
+         * 删除帖子，并更新allPosts和filteredPosts
+         */
+        deletePost(postID) {
+            const token = this.$store.state.token; // 从 Vuex 获取 token
+            axios.delete('http://localhost:8080/api/Post/DeletePostBypostID', {
+                params: { postID: postID },
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
             })
-            .catch(error => {
-                console.error('删除帖子时发生错误:', error);
-            });
+                .then(response => {
+                    console.log(response.data.message);
+                    this.allPosts = this.allPosts.filter(post => post.postID !== postID);
+                    this.filteredPosts = this.filteredPosts.filter(post => post.postID !== postID);
+                    this.updateHotPosts(); // 更新热帖
+                })
+                .catch(error => {
+                    console.error('删除帖子时发生错误:', error);
+                });
+        },
+
+        /**
+        * 更新热帖数组，按浏览量排序并取前10个
+        */
+        updateHotPosts() {
+            this.hotPosts = this.allPosts
+                .slice()
+                .sort((a, b) => b.forwardCount - a.forwardCount)
+                .slice(0, 10);
+        },
     },
 };
 </script>
