@@ -4,6 +4,7 @@ import SignUpView from '@/views/SignUpView.vue'
 import ForumView from '@/views/ForumView.vue'
 import PostDetail from '@/views/PostDetail.vue'
 import UserProfile from '@/views/UserProfile.vue'
+import AdminView from '@/views/AdminView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -37,13 +38,19 @@ const router = createRouter({
     },
     // 用户信息界面
     {
-      //path: '/user/:userID',
-      path: '/',
+      path: '/user/:userID',
+      //path: '/',
       name: 'UserProfile',
       component: UserProfile,
       props: true
+    },
+    // 管理员界面
+    {
+      path: '/',
+      name: 'AdminView',
+      component: AdminView,
+      props: true
     }
-
   ]
 })
 
