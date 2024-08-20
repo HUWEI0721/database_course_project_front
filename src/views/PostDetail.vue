@@ -1,13 +1,12 @@
 <template>
     <div class="forum-bg">
-        <el-button icon="el-icon-arrow-left" class="back-button" @click="goBack" />
+        <el-button icon="el-icon-back" class="back-button" @click="goBack" />
         <div class="post-container">
             <h1 class="post-title">{{ post.postTitle }}</h1>
 
             <div class="post-info">
-                <span class="post-author" @click="goToAuthorProfile">{{ post.userName }}</span>
+                <span class="post-author" @click="goToAuthorProfile">{{ post.userID }}</span>
                 <span class="post-time">{{ post.postTime }}</span>
-                <span class="post-views">👁️ {{ post.forwardCount }}</span> <!-- forwardCount 表示浏览量 -->
             </div>
 
             <div class="post-content">
@@ -20,6 +19,7 @@
                 <button @click="toggleComments" class="btn-action">💬 评论 {{ post.commentsCount }}</button>
                 <button @click="reportPost" class="btn-action">🚩 举报</button>
                 <button @click="openShareDialog" class="btn-action">🔗 分享</button>
+                <button @click="forwardPost" class="btn-action">🔄 转发</button>
             </div>
 
             <div v-if="showComments" class="comments-section">
@@ -28,17 +28,18 @@
                     <p><strong>{{ comment.userName }}</strong>: {{ comment.content }}</p>
                     <div class="comment-actions">
                         <span @click="likeComment(comment.commentID)">👍 {{ comment.likedByCurrentUser ? '取消' : '点赞' }}
-                            {{
-                                comment.likesCount }}</span>
+                            {{ comment.likesCount }}</span>
                         <span @click="setReplyTarget(comment)">回复</span>
                         <span v-if="isCurrentUser(comment.userName)" @click="deleteComment(comment.commentID)">删除</span>
+                        <button @click="toggleReplies(comment)" class="btn-action">显示回复</button>
                     </div>
-                    <div v-for="reply in comment.replies" :key="reply.commentID" class="reply-item">
+                    <!-- 评论的回复 -->
+                    <div v-if="comment.showReplies" v-for="reply in comment.replies" :key="reply.commentID"
+                        class="reply-item">
                         <p><strong>@{{ reply.userName }}: </strong>{{ reply.content }}</p>
                         <div class="comment-actions">
                             <span @click="likeComment(reply.commentID)">👍 {{ reply.likedByCurrentUser ? '取消' : '点赞' }}
-                                {{
-                                    reply.likesCount }}</span>
+                                {{ reply.likesCount }}</span>
                             <span @click="setReplyTarget(reply)">回复</span>
                             <span v-if="isCurrentUser(reply.userName)" @click="deleteReply(reply.commentID)">删除</span>
                         </div>
@@ -57,27 +58,32 @@
         </div>
 
         <!-- 分享弹窗 -->
-        <el-dialog title="分享帖子" :visible.sync="shareDialogVisible" width="30%">
+        <el-dialog title="分享帖子" :visible="shareDialogVisible" width="30%" v-model="shareDialogVisible">
             <div>
                 <p>复制下面的链接分享给他人：</p>
                 <el-input v-model="shareLink" readonly></el-input>
             </div>
-            <span slot="footer" class="dialog-footer">
-                <el-button @click="shareDialogVisible = false">关闭</el-button>
-                <el-button type="primary" @click="copyLink">复制链接</el-button>
-            </span>
+            <template #footer>
+                <span class="dialog-footer">
+                    <el-button @click="shareDialogVisible = false">关闭</el-button>
+                    <el-button type="primary" @click="copyLink">复制链接</el-button>
+                </span>
+            </template>
         </el-dialog>
 
         <!-- 举报弹窗 -->
-        <el-dialog title="确认举报" :visible.sync="reportDialogVisible" width="30%">
+        <el-dialog title="确认举报" v-model:visible="reportDialogVisible" width="30%">
             <div>
                 <p>你确定要举报此帖子吗？</p>
             </div>
-            <span slot="footer" class="dialog-footer">
-                <el-button @click="reportDialogVisible = false">取消</el-button>
-                <el-button type="danger" @click="confirmReport">确认举报</el-button>
-            </span>
+            <template #footer>
+                <span class="dialog-footer">
+                    <el-button @click="reportDialogVisible = false">取消</el-button>
+                    <el-button type="danger" @click="confirmReport">确认举报</el-button>
+                </span>
+            </template>
         </el-dialog>
+
     </div>
 </template>
 
@@ -91,7 +97,17 @@ export default {
             showComments: false,
             newCommentText: "",
             replyingTo: null, // 当前回复的目标
-            post: {},
+            post: {
+                postID: null,
+                userID: null,
+                postTitle: '',
+                postContent: '',
+                postTime: '',
+                likesCount: null,
+                forwardCount: null,
+                commentsCount: null,
+                refrencePostID: null
+            },
             comments: [],
             shareDialogVisible: false,
             reportDialogVisible: false,
@@ -103,17 +119,15 @@ export default {
     },
     methods: {
         fetchPostDetail() {
-            const token = this.$store.state.token;
-            const postID = this.$route.params.postID; // 假设通过路由参数传递postID
-            console.log("Fetching post details for postID:", postID);
+            const token = localStorage.getItem('token');
+            const postID = this.$route.params.postID;
             axios.get(`http://localhost:8080/api/Post/GetPostByPostID`, {
-                params: { postID },
-                headers: {
-                    Authorization: `Bearer ${token}`
+                params: {
+                    token: token,
+                    postID: postID
                 }
             })
                 .then(response => {
-                    console.log("Post details fetched successfully:", response.data);
                     this.post = response.data;
                     this.fetchComments(postID);
                 })
@@ -122,35 +136,56 @@ export default {
                 });
         },
         fetchComments(postID) {
-            const token = this.$store.state.token;
-            console.log("Fetching comments for postID:", postID);
+            const token = localStorage.getItem('token');
             axios.get(`http://localhost:8080/api/Comment/GetCommentByPostID`, {
-                params: { postID },
-                headers: {
-                    Authorization: `Bearer ${token}`
+                params: {
+                    token: token,
+                    postID: postID
                 }
             })
                 .then(response => {
-                    console.log("Comments fetched successfully:", response.data);
                     this.comments = response.data;
                 })
                 .catch(error => {
                     console.error('获取评论时发生错误:', error);
                 });
         },
+        fetchReplies(commentID) {
+            const token = localStorage.getItem('token');
+            return axios.get(`http://localhost:8080/api/Comment/GetCommentByCommentID`, {
+                params: {
+                    token: token,
+                    commentID: commentID
+                }
+            })
+                .then(response => {
+                    return response.data;
+                })
+                .catch(error => {
+                    console.error('获取回复时发生错误:', error);
+                });
+        },
+        toggleReplies(comment) {
+            if (!comment.showReplies) {
+                this.fetchReplies(comment.commentID).then(replies => {
+                    this.$set(comment, 'replies', replies);
+                    this.$set(comment, 'showReplies', true);
+                });
+            } else {
+                comment.showReplies = false;
+            }
+        },
         goBack() {
-            console.log("Navigating back to forum");
-            this.$router.push('/forum'); // 返回到论坛页面
+            this.$router.go(-1);
         },
         toggleLike(postID) {
-            console.log("Toggling like for postID:", postID);
             this.$store.dispatch('toggleLike', postID);
         },
         addComment() {
-            const token = this.$store.state.token;
+            const token = localStorage.getItem('token');
             if (this.newCommentText.trim()) {
                 const newComment = {
-                    commentID: Date.now(),
+                    commentID: -1,
                     userID: this.$store.state.userID,
                     postID: this.post.postID,
                     parentCommentID: this.replyingTo ? this.replyingTo.commentID : -1,
@@ -160,15 +195,8 @@ export default {
                 };
 
                 if (this.replyingTo) {
-                    // 调用ReplyComment API
-                    console.log("Replying to commentID:", this.replyingTo.commentID);
-                    axios.post('http://localhost:8080/api/Comment/ReplyComment', newComment, {
-                        headers: {
-                            Authorization: `Bearer ${token}`
-                        }
-                    })
+                    axios.post(`http://localhost:8080/api/Comment/ReplyComment?token=${token}`, newComment)
                         .then(response => {
-                            console.log("Reply submitted:", response.data);
                             if (response.data.message === '回复成功') {
                                 this.replyingTo.replies.push(newComment);
                                 this.replyingTo = null;
@@ -180,15 +208,8 @@ export default {
                             console.error('回复时发生错误:', error);
                         });
                 } else {
-                    // 发表新评论，调用PublishComment API
-                    console.log("Publishing new comment:", newComment);
-                    axios.post('http://localhost:8080/api/Comment/PublishComment', newComment, {
-                        headers: {
-                            Authorization: `Bearer ${token}`
-                        }
-                    })
+                    axios.post(`http://localhost:8080/api/Comment/PublishComment?token=${token}`, newComment)
                         .then(response => {
-                            console.log("Comment published:", response.data);
                             if (response.data.message === '发布评论成功') {
                                 this.comments.push(newComment);
                                 this.post.commentsCount++;
@@ -204,15 +225,14 @@ export default {
             }
         },
         likeComment(commentID) {
-            const token = this.$store.state.token;
-            console.log("Liking commentID:", commentID);
-            axios.post('http://localhost:8080/api/Comment/likeComment', { commentID }, {
-                headers: {
-                    Authorization: `Bearer ${token}`
+            const token = localStorage.getItem('token');
+            axios.post('http://localhost:8080/api/Comment/likeComment', {
+                params: {
+                    token: token,
+                    commentID: commentID
                 }
             })
                 .then(response => {
-                    console.log("Comment liked:", response.data);
                     if (response.data.message === '点赞成功') {
                         const comment = this.comments.find(c => c.commentID === commentID);
                         comment.likesCount++;
@@ -226,16 +246,14 @@ export default {
                 });
         },
         deleteComment(commentID) {
-            const token = this.$store.state.token;
-            console.log("Deleting commentID:", commentID);
+            const token = localStorage.getItem('token');
             axios.delete('http://localhost:8080/api/Comment/DeleteComment', {
-                params: { commentID },
-                headers: {
-                    Authorization: `Bearer ${token}`
+                params: {
+                    token: token,
+                    commentID: commentID
                 }
             })
                 .then(response => {
-                    console.log("Comment deleted:", response.data);
                     if (response.data.message === '评论删除成功') {
                         this.comments = this.comments.filter(c => c.commentID !== commentID);
                         this.post.commentsCount--;
@@ -248,47 +266,62 @@ export default {
                 });
         },
         setReplyTarget(comment) {
-            console.log("Setting reply target to commentID:", comment.commentID);
             this.replyingTo = comment;
             this.newCommentText = `@${comment.userName} `;
         },
         clearReplyTarget() {
-            console.log("Clearing reply target");
             if (!this.newCommentText.trim()) {
                 this.replyingTo = null;
             }
         },
         toggleComments() {
-            console.log("Toggling comments visibility");
             this.showComments = !this.showComments;
         },
         openShareDialog() {
-            console.log("Opening share dialog");
             this.shareLink = `${window.location.origin}/post/${this.post.postID}`;
             this.shareDialogVisible = true;
         },
         copyLink() {
-            console.log("Copying share link");
             navigator.clipboard.writeText(this.shareLink).then(() => {
                 this.$message.success('链接已复制到剪贴板！');
             });
         },
         reportPost() {
-            console.log("Opening report dialog");
             this.reportDialogVisible = true;
         },
         confirmReport() {
-            console.log("Confirming report");
             this.$message.success('感谢你的反馈，举报已提交。');
             this.reportDialogVisible = false;
         },
         goToAuthorProfile() {
-            console.log("Navigating to author's profile with userID:", this.post.userID);
-            this.$router.push(`/profile/${this.post.userID}`);
+            this.$router.push(`/user/:userID=${this.post.userID}`);
+        },
+        forwardPost() {
+            const token = localStorage.getItem('token');
+            axios.post(`http://localhost:8080/api/Post/ForwardPost`, {
+                token: token,
+                refrencePostID: this.post.postID
+            })
+                .then(response => {
+                    if (response.data.message === '成功转发') {
+                        this.$message.success('帖子已成功转发！');
+                        this.post.forwardCount++;
+                    } else {
+                        this.$message.error('转发失败');
+                    }
+                })
+                .catch(error => {
+                    console.error('转发帖子时发生错误:', error);
+                });
         }
     }
 };
 </script>
+
+<style scoped>
+/* 原样保留样式代码 */
+</style>
+
 
 <style scoped>
 .forum-bg {
@@ -325,11 +358,8 @@ export default {
 .post-info {
     display: flex;
     justify-content: center;
-    /* 居中显示 */
     align-items: center;
-    /* 垂直居中 */
-    gap: 10px;
-    /* 设置元素之间的间距 */
+    gap: 50px;
     font-size: 14px;
     color: #777;
 }
@@ -337,7 +367,6 @@ export default {
 .post-info span {
     display: inline-flex;
     align-items: center;
-    /* 确保图标和文本垂直居中对齐 */
 }
 
 .post-author {
@@ -414,13 +443,12 @@ textarea {
     resize: none;
 }
 
-/* 返回按钮样式 */
 .back-button {
     position: absolute;
     top: 20px;
     left: 20px;
-    background: transparent;
-    color: #007bff;
+    background-color: #007bff;
+    color: black;
     border: none;
     font-size: 24px;
     cursor: pointer;

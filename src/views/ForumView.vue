@@ -82,21 +82,20 @@
                 <!-- 帖子列表部分 -->
                 <div v-for="post in filteredPosts" :key="post.postID" class="post-item">
                     <div class="post-content">
-                        <h3 class="post-title" @click="viewPost(post.postID)">{{ post.title }}</h3>
-                        <p class="post-snippet">{{ post.content }}</p>
+                        <h3 class="post-title" @click="viewPost(post.postID)">{{ post.postTitle }}</h3>
+                        <p class="post-snippet">{{ truncatedContent(post.postContent) }}</p>
                     </div>
                     <div class="post-footer">
                         <span class="post-author">{{ post.userID }}</span>
                         <span class="post-actions">
-                            <icon-thumb-up @click="toggleLike(post.postID)" class="icon-with-text">
-                                <span>{{ post.liked ? '取消' : '点赞' }} {{ post.likesCount }}</span>
-                            </icon-thumb-up>
-                            <icon-message @click="viewComments(post.postID)" class="icon-with-text">
-                                <span>{{ getCommentCount(post.postID) }}</span>
-                            </icon-message>
-                            <icon-eye class="icon-with-text">
-                                <span>{{ post.forwardCount }}</span>
-                            </icon-eye>
+                            <span class="icon-with-text no-click">
+                                <icon-thumb-up />
+                                <span>{{ post.likesCount }}</span>
+                            </span>
+                            <span class="icon-with-text no-click">
+                                <icon-message />
+                                <span>{{ post.commentsCount }}</span>
+                            </span>
                         </span>
                     </div>
                 </div>
@@ -117,7 +116,7 @@
                         <el-divider />
                         <el-text v-for="hotPost in hotPosts" :key="hotPost.postID" @click="viewPost(hotPost.postID)"
                             class="hot-post-title">
-                            <icon-fire class="icon-fire-small" /> {{ hotPost.title }}
+                            <icon-fire class="icon-fire-small" /> {{ hotPost.postTitle }}
                         </el-text>
                         <el-divider />
                     </div>
@@ -126,6 +125,7 @@
         </div>
     </div>
 </template>
+
 
 <script>
 import axios from 'axios';
@@ -153,19 +153,39 @@ export default {
     data() {
         return {
             newPost: {
-                postID: -1,
-                userID: -1,
-                title: '',
-                content: '',
-                category: '',
+                postID: null,
+                userID: null,
+                postTitle: '',
+                postContent: '',
                 postTime: '',
-                likesCount: 0,
-                forwardCount: 0,
-                commentsCount: 0,
-                refrencepostID: -1,
+                likesCount: null,
+                forwardCount: null,
+                commentsCount: null,
+                refrencePostID: null
             },
-            allPosts: [], // 将初始数据移除，依赖fetchAllPosts填充
-            filteredPosts: [],
+            allPosts: [],
+            filteredPosts: [{
+                postID: 1,
+                userID: 2595966,
+                postTitle: 'Test Post 1',
+                postContent: 'Test Content 1 666111111111111111111阿发  ',
+                postTime: '2022-01-01 12:00:00',
+                likesCount: 1,
+                forwardCount: 2,
+                commentsCount: 3,
+                refrencePostID: null
+            },
+            {
+                postID: 2,
+                userID: 3,
+                postTitle: 'Test Post 2',
+                postContent: 'Test Content 2 666111111111111111111阿发8888888888888888888888888888888',
+                postTime: '2022-01-01 12:00:00',
+                likesCount: 3,
+                forwardCount: 4,
+                commentsCount: 5,
+                refrencePostID: null
+            },],
             hotPosts: [],  // 热帖数组
             selectedCategory: "全部帖子", // 初始选中的类别
             currentIndex: 0,
@@ -174,14 +194,12 @@ export default {
     computed: {
         ...mapState(["categories"]),
         visibleCategories() {
-            // 连接数组形成循环效果
             const doubledCategories = [...this.categories, ...this.categories];
             const startIndex = this.currentIndex % this.categories.length;
             return doubledCategories.slice(startIndex, startIndex + 6); // 假设一次显示6个项目
         },
     },
     created() {
-        // 在组件创建时初始化所有帖子，并确保展示全部帖子
         this.fetchAllPosts();
     },
     methods: {
@@ -190,7 +208,7 @@ export default {
         },
 
         fetchAllPosts() {
-            const token = this.$store.state.token; // 从 Vuex 获取 token
+            const token = localStorage.getItem('token');
             this.getAllPosts(token)
                 .then(response => {
                     this.filteredPosts = this.allPosts; // 确保初始展示所有帖子
@@ -201,31 +219,20 @@ export default {
                 });
         },
 
-        /**
-        * 获取所有帖子，并更新allPosts和filteredPosts以便展示
-        */
         getAllPosts(token) {
-            return axios.get('http://localhost:8080/api/Post/GetAllPost', {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            })
+            return axios.get(`http://localhost:8080/api/Post/GetAllPost?token=${token}`)
                 .then(response => {
-                    console.log("收到的帖子数据:", response.data);
-                    this.allPosts = response.data; // 将获取到的帖子存储到allPosts数组中
-                    this.filteredPosts = this.allPosts; // 初始展示所有帖子
-                    this.updateHotPosts(); // 更新热帖
-                    return response; // 返回响应，以便其他方法继续使用
+                    this.allPosts = response.data;
+                    this.filteredPosts = this.allPosts;
+                    this.updateHotPosts();
+                    return response;
                 })
                 .catch(error => {
                     console.error('获取所有帖子时发生错误:', error);
-                    throw error; // 抛出错误，以便在调用方处理
+                    throw error;
                 });
         },
 
-        /**
-         * 根据所选分类筛选帖子，并更新filteredPosts
-         */
         filterByCategory(category) {
             this.selectedCategory = category;
             if (category === "全部帖子") {
@@ -233,38 +240,27 @@ export default {
             } else {
                 this.filteredPosts = this.allPosts.filter(post => post.category === category);
             }
-            // this.updateHotPosts(); // 更新热帖
         },
 
-        /**
-         * 发布新帖子，并更新allPosts和filteredPosts
-         */
         addPost() {
-            const token = this.$store.state.token; // 从 Vuex 获取 token
+            const token = this.$store.state.token;
             if (this.newPost.title && this.newPost.content && this.newPost.category) {
                 const newPost = {
                     postID: -1,
                     userID: -1,
-                    title: this.newPost.title,
-                    content: this.newPost.content,
-                    category: this.newPost.category,
+                    postTitle: this.newPost.title,
+                    postContent: this.newPost.content,
+                    postCategory: this.newPost.category,
                     postTime: new Date().toISOString(),
                     likesCount: 0,
                     forwardCount: 0,
                     commentsCount: 0,
                     refrencepostID: -1,
                 };
-                console.log("发布的帖子数据:", newPost);
-                axios.post('http://localhost:8080/api/Post/PublishPost', newPost, {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                })
+                axios.post(`http://localhost:8080/api/Post/PublishPost?token=${token}`, newPost)
                     .then(response => {
-                        console.log("发布帖子成功:", response.data.message);
                         this.allPosts.push(newPost);
-                        this.filteredPosts.push(newPost); // 同时更新 filteredPosts
-                        this.updateHotPosts(); // 更新热帖
+                        this.updateHotPosts();
                         this.resetNewPostForm();
                     })
                     .catch(error => {
@@ -281,41 +277,36 @@ export default {
                 content: '',
                 category: '',
             };
-            // 重新触发绑定，更新 EditArticle 中的表单内容
-            this.$forceUpdate(); // 强制 Vue 更新，确保数据同步
+            this.$forceUpdate();
         },
 
-
-        /**
-         * 删除帖子，并更新allPosts和filteredPosts
-         */
         deletePost(postID) {
-            const token = this.$store.state.token; // 从 Vuex 获取 token
-            axios.delete('http://localhost:8080/api/Post/DeletePostBypostID', {
-                params: { postID: postID },
-                headers: {
-                    Authorization: `Bearer ${token}`
+            const token = this.$store.state.token;
+            axios.delete('http://localhost:8080/api/Post/DeletePostByPostID', {
+                params: {
+                    token: token,
+                    postID: postID
                 }
             })
                 .then(response => {
-                    console.log(response.data.message);
                     this.allPosts = this.allPosts.filter(post => post.postID !== postID);
                     this.filteredPosts = this.filteredPosts.filter(post => post.postID !== postID);
-                    this.updateHotPosts(); // 更新热帖
+                    this.updateHotPosts();
                 })
                 .catch(error => {
                     console.error('删除帖子时发生错误:', error);
                 });
         },
 
-        /**
-        * 更新热帖数组，按浏览量排序并取前10个
-        */
         updateHotPosts() {
             this.hotPosts = this.allPosts
                 .slice()
-                .sort((a, b) => b.forwardCount - a.forwardCount)
+                .sort((a, b) => (b.likesCount + b.commentsCount) - (a.likesCount + a.commentsCount))
                 .slice(0, 10);
+        },
+
+        truncatedContent(content) {
+            return content.length > 30 ? content.slice(0, 30) + '...' : content;
         },
     },
 };
@@ -485,7 +476,7 @@ body {
 }
 
 .post-item {
-    background-color: #fff;
+    background-color: transparent;
     color: #000;
     padding: 20px;
     margin-bottom: 20px;
@@ -509,6 +500,14 @@ body {
     color: #666;
 }
 
+/*.post-footer {
+    margin-top: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    color: #888;
+}*/
 .post-footer {
     margin-top: 15px;
     display: flex;
@@ -516,31 +515,35 @@ body {
     align-items: center;
     font-size: 14px;
     color: #888;
-}
-
-.post-author {
-    font-weight: bold;
+    gap: 20px;
 }
 
 .post-actions {
+    color: blue;
     display: flex;
-    gap: 40px;
-    /* 添加间距 */
+    gap: 15px;
     align-items: center;
 }
 
 .icon-with-text {
-    color: black;
+    color: inherit;
     display: flex;
     align-items: center;
-    cursor: pointer;
+    cursor: default;
+    /* 禁用点击手势 */
     gap: 5px;
-    /* 图标和文本之间的距离 */
 }
 
-.icon-with-text:hover {
-    color: #007bff;
-    /* 鼠标悬停时改变颜色 */
+.icon-with-text.no-click {
+    pointer-events: none;
+    /* 禁用所有鼠标事件 */
+    cursor: default;
+    /* 设置为默认光标，禁用点击手势 */
+}
+
+
+.post-author {
+    font-weight: bold;
 }
 
 .icon-fire-small {

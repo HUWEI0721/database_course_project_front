@@ -134,7 +134,8 @@ export default
                         if (requestData.role === 'admin') {
                             this.$router.push({ path: '/admin' });
                         } else {
-                            this.$router.push({ name: 'home' });
+                            //this.$router.push({ name: 'UserProfile' });
+                            this.$router.push({ name: 'ForumView' });
                         }
                     } else if (message === '邮箱不存在或错误' || message === '密码错误') {
                         notificationType = 'error';

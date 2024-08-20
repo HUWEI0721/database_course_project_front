@@ -7,7 +7,7 @@
                         <img :src="imagePreview || profile.iconURL || defaultAvatar" alt="avatar" class="avatar">
                         <span class="edit-icon" @click.stop="triggerFileInput">&#9998;</span>
                     </div>
-                    <h2>{{ profile.nickname }}</h2>
+                    <h2>{{ profile.userName }}</h2>
                     <div class="tags">
                         <span v-for="(tag, index) in profile.tags" :key="index" class="tag"
                             :style="{ backgroundColor: tag.color }">{{ tag.text }}</span>
@@ -38,14 +38,13 @@
                         </div>
                     </section>
                     <!-- 第二行：密码 -->
-                    <EditableField label="密码" :value="profile.password" type="input"
-                        @save="profile.password = $event" />
+
 
                     <!-- 第三行：昵称、年龄、性别 -->
                     <section class="profile-info">
                         <div class="info-row uniform-row">
-                            <EditableField label="昵称" :value="profile.nickname" type="input"
-                                @save="profile.nickname = $event" />
+                            <EditableField label="昵称" :value="profile.userName" type="input"
+                                @save="profile.userName = $event" />
                             <EditableField label="年龄" :value="profile.age" type="input" @save="profile.age = $event" />
                             <div class="profile-editor">
                                 <label>性别</label>
@@ -64,8 +63,7 @@
                                 @save="profile.goalType = $event" />
                             <EditableField label="体重" :value="profile.goalWeight" type="input"
                                 @save="profile.goalWeight = $event" />
-                            <EditableField label="身高" :value="profile.height" type="input"
-                                @save="profile.height = $event" />
+
                         </div>
                     </section>
 
@@ -127,22 +125,50 @@ export default {
     data() {
         return {
             profile: {
-                userID: null,
-                nickname: '',
+                /*userID: null,
+                userName: '',
                 password: '',
+                salt:'',
                 email: '',
+                registrationTime: '',
                 iconURL: '', // 这里可以为空或者实际路径
                 age: null,
                 gender: '',
-                tags: [],
+                tags: '',
                 introduction: '',
                 goalType: '',
                 goalWeight: null,
-                height: null,
-                isMember: false,
-                registrationTime: ''
+                isMember: null,
+                isPost: null,
+                isDelete: null*/
+                userID: 2,
+                userName: 'hhh',
+                password: 'dfgdgdfg',
+                salt: 'dsgg',
+                email: 'dfg@qq.com',
+                registrationTime: '2023-01-01 00:00:00',
+                iconURL: '', // 这里可以为空或者实际路径
+                age: 15,
+                gender: '男',
+                tags: '帅气',
+                introduction: '阿凡达啊方法呃',
+                goalType: 'aaaa',
+                goalWeight: null,
+                isMember: null,
+                isPost: null,
+                isDelete: null
             },
-            posts: [], // 用户的帖子列表
+            posts: [{
+                postID: null,
+                userID: null,
+                postTitle: '',
+                postContent: '',
+                postTime: '',
+                likesCount: null,
+                forwardCount: null,
+                commentsCount: null,
+                refrencePostID: null
+            }], // 用户的帖子列表
             colors: ['#e57373', '#81c784', '#64b5f6', '#ffb74d', '#ba68c8', '#4db6ac'],
             addingTag: false,
             newTag: '',
@@ -161,34 +187,24 @@ export default {
     },
     methods: {
         async fetchUserProfile() {
-            const userID = this.$route.params.userID;
+            //const userID = this.$route.params.userID;
+            const token = localStorage.getItem('token');
+            //console.log(token)
             try {
-                const response = await axios.get('http://localhost:8080/api/User/GetProfile', {
-                    params: {
-                        userID: userID
-                    },
-                    headers: {
-                        Authorization: `Bearer ${this.token}`
-                    }
-                });
+                const response = await axios.get(`http://localhost:8080/api/User/GetPersonalProfile?token=${token}`);
                 this.profile = response.data;
                 this.originalProfile = JSON.parse(JSON.stringify(this.profile));
-                console.log('User profile fetched:', this.profile);
+                console.log('this.profile:', this.profile)
+                console.log('接收到的用户资料响应数据:', response.data);
             } catch (error) {
                 console.error('Error fetching user profile:', error);
             }
         },
         async fetchUserPosts() {
-            const userID = this.$route.params.userID;
+            //const userID = this.$route.params.userID;
+            const token = localStorage.getItem('token');
             try {
-                const response = await axios.get('http://localhost:8080/api/Post/GetPostByUserID', {
-                    params: {
-                        userID: userID
-                    },
-                    headers: {
-                        Authorization: `Bearer ${this.token}`
-                    }
-                });
+                const response = await axios.get(`http://localhost:8080/api/Post/GetPersonalPost?token=${token}`);
                 this.posts = response.data;
                 console.log('User posts fetched:', this.posts);
             } catch (error) {
@@ -247,7 +263,6 @@ export default {
                     isMember: this.profile.isMember,
                     isPost: -1,
                     isDelete: -1
-
                 }, {
                     headers: {
                         Authorization: `Bearer ${this.token}`
@@ -260,7 +275,7 @@ export default {
             } catch (error) {
                 console.error('Error updating profile:', error);
             }
-        },
+        }
     }
 };
 </script>

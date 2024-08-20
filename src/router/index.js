@@ -24,7 +24,6 @@ const router = createRouter({
     // 论坛界面
     {
       path: '/forum',
-      //path: '/',
       name: 'ForumView',
       component: ForumView
     },
