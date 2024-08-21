@@ -100,6 +100,37 @@
                         </ul>
                     </section>
 
+                    <!-- 活力币余额模块 -->
+                    <section class="vitality-balance">
+                        <h3>活力币余额</h3>
+                        <div class="balance-display">
+                            <p class="balance-amount">¥ {{ vigorTokenBalance }}</p>
+                        </div>
+                        <h3>余额变动记录</h3>
+                        <table class="balance-records">
+                            <thead>
+                                <tr>
+                                    <th>记录ID</th>
+                                    <th>变动原因</th>
+                                    <th>变动量</th>
+                                    <th>余额</th>
+                                    <th>创建时间</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="record in vigorTokenRecords" :key="record.recordID">
+                                    <td>{{ record.recordID }}</td>
+                                    <td>{{ record.reason }}</td>
+                                    <td :class="{ positive: record.change > 0, negative: record.change < 0 }">
+                                        {{ record.change > 0 ? '+￥' : '￥' }}{{ record.change }}
+                                    </td>
+                                    <td>{{ '￥' }}{{ record.balance }}</td>
+                                    <td>{{ new Date(record.createTime).toLocaleString() }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </section>
+
 
                 </main>
             </div>
@@ -176,6 +207,8 @@ export default {
             defaultAvatar,
             imagePreview: null, // 用于存储图片预览的路径
             isLargeImageVisible: false, // 控制大图显示
+            vigorTokenBalance: 0,  // 活力币余额
+            vigorTokenRecords: []       // 活力币余额变化记录
         };
     },
     computed: {
@@ -184,14 +217,17 @@ export default {
     created() {
         this.fetchUserProfile();
         this.fetchUserPosts(); // 获取用户帖子
+        this.getVigorTokenRecordsFromDB(0)
+        this.getVigorTokenBalance(0)
     },
     methods: {
         async fetchUserProfile() {
             //const userID = this.$route.params.userID;
             const token = localStorage.getItem('token');
+            console.log("1", token)
             //console.log(token)
             try {
-                const response = await axios.get(`http://localhost:8080/api/User/GetPersonalProfile?token=${token}`);
+                const response = await axios.get(`http://localhost:5273/api/User/GetPersonalProfile?token=${token}`);
                 this.profile = response.data;
                 this.originalProfile = JSON.parse(JSON.stringify(this.profile));
                 console.log('this.profile:', this.profile)
@@ -204,7 +240,7 @@ export default {
             //const userID = this.$route.params.userID;
             const token = localStorage.getItem('token');
             try {
-                const response = await axios.get(`http://localhost:8080/api/Post/GetPersonalPost?token=${token}`);
+                const response = await axios.get(`http://localhost:5273/api/Post/GetPersonalPost?token=${token}`);
                 this.posts = response.data;
                 console.log('User posts fetched:', this.posts);
             } catch (error) {
@@ -247,7 +283,7 @@ export default {
         },
         async saveProfile() {
             try {
-                const response = await axios.put('http://localhost:8080/api/User/UpdateProfile', {
+                const response = await axios.put('http://localhost:5273/api/User/UpdateProfile', {
                     userID: this.profile.userID,
                     userName: this.profile.nickname,
                     password: this.profile.password,
@@ -274,6 +310,35 @@ export default {
                 alert('保存成功！');
             } catch (error) {
                 console.error('Error updating profile:', error);
+            }
+        },
+        // 获取活力币余额
+        getVigorTokenBalance(userID) {
+            const token = localStorage.getItem('token');
+            try {
+                const response = axios.get(`http://localhost:5273/api/User/GetVigorTokenBalance?token=${token}`)
+                this.vigorTokenBalance = response.data.balance;
+            } catch (error) {
+                console.error('Error fetching vigorTokenBalance', error)
+            }
+        },
+        getVigorTokenRecordsFromDB(userID) {
+            const token = localStorage.getItem('token');
+            console.log("2", token)
+            try {
+                const response = axios.get(`http://localhost:5273/api/User/GetVigorTokenRecords?token=${token}`)
+                response.data.records.forEach(item => {
+                    const record = {
+                        recordID: item.recordID,
+                        reason: item.reason,
+                        change: item.change,
+                        balance: item.balance,
+                        createTime: item.createTime
+                    }
+                    this.vigorTokenRecords.push(record)
+                })
+            } catch (error) {
+                console.error('Error fetching vigorTokenBalance', error)
             }
         }
     }
@@ -310,10 +375,17 @@ export default {
     max-width: 1300px;
     margin: auto;
     background-color: #fff;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
+    /* 白色背景增强立体感 */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1),
+        /* 主阴影 */
+        0 6px 20px rgba(0, 0, 0, 0.1);
+    /* 次阴影，增强立体感 */
+    border-radius: 12px;
+    /* 圆角半径，增加平滑感 */
     justify-content: space-between;
     background-color: transparent;
+    overflow: hidden;
+    /* 避免子元素溢出边界 */
 }
 
 .profile-sidebar {
@@ -329,11 +401,12 @@ export default {
 
 .profile-main {
     width: 80%;
-    margin-left: 20px;
+    margin-left: 0px;
     padding: 20px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    background-color: transparent;
 }
 
 .avatar-wrapper {
@@ -405,6 +478,8 @@ export default {
     display: flex;
     flex-direction: column;
     gap: 20px;
+    font-size: 20px;
+    color: #333;
 }
 
 .info-row {
@@ -418,6 +493,7 @@ export default {
     flex: 1;
 }
 
+
 p {
     height: 40px;
     margin: 5px 0;
@@ -425,6 +501,9 @@ p {
     border: 1px solid #ccc;
     border-radius: 4px;
     background-color: transparent;
+    font-size: 20px;
+    color: #333;
+    line-height: 24px;
 }
 
 .profile-editor,
@@ -433,6 +512,8 @@ p {
     flex-direction: column;
     width: 32%;
     margin-bottom: 10px;
+    font-size: 20px;
+    color: #333
 }
 
 input,
@@ -471,11 +552,12 @@ select {
     flex-direction: column;
     width: 100%;
     margin-bottom: 10px;
+
 }
 
 .signature-textarea textarea {
     height: 150px;
-    font-size: 16px;
+    font-size: 20px;
     line-height: 1.5;
     width: 100%;
     border-radius: 4px;
@@ -483,12 +565,14 @@ select {
     resize: none;
     border: 1px solid #ccc;
     padding: 10px;
+
 }
 
 .profile-actions {
     display: flex;
     justify-content: flex-end;
     margin-top: 20px;
+    font-size: 20px
 }
 
 .cancel-button,
@@ -532,5 +616,86 @@ select {
 
 .post-item small {
     color: #999;
+}
+
+.balance-display {
+    display: flex;
+    align-items: center;
+    /* 垂直居中 */
+}
+
+.balance-amount {
+    font-size: 24px;
+    color: #333;
+    margin-bottom: 10px;
+    /* 移除默认的外边距 */
+    text-align: center;
+    /* 文本居中 */
+    line-height: 1.5;
+    /* 调整行高 */
+    background: none;
+    /* 移除背景 */
+    border: none;
+    /* 移除边框 */
+}
+
+.balance-records {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.balance-records th,
+.balance-records td {
+    border: 1px solid #dbd7d7;
+    padding: 8px;
+    text-align: center;
+    font-size: 20px;
+}
+
+.balance-records tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+.balance-records tr:hover {
+    background-color: #ddd;
+}
+
+.positive {
+    color: green;
+}
+
+.negative {
+    color: red;
+}
+
+h3 {
+    font-size: 20px;
+    color: #333;
+
+}
+
+/* 针对 input 输入框 */
+input[type="text"],
+input[type="number"],
+select {
+    font-size: 20px;
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* 强制应用样式到 EditableField 组件内部 */
+::v-deep .editable-field input {
+    font-size: 20px;
+    /* 设置字体大小 */
+    padding: 8px;
+    /* 添加内边距 */
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    width: 100%;
+    box-sizing: border-box;
 }
 </style>

@@ -37,15 +37,15 @@ const router = createRouter({
     },
     // 用户信息界面
     {
-      path: '/user/:userID',
-      //path: '/',
+      //path: '/user/:userID',
+      path: '/',
       name: 'UserProfile',
       component: UserProfile,
       props: true
     },
     // 管理员界面
     {
-      path: '/',
+      path: '/admin',
       name: 'AdminView',
       component: AdminView,
       props: true
