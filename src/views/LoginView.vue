@@ -120,6 +120,8 @@ export default
                         }
                     });
                     console.log("收到响应的数据: ", response.data.message);
+                    
+                    const response1 = await axios.get(`http://localhost:8080/api/User/GetPersonalProfile?token=${response.data.token}`);
 
                     const message = response.data.message;
                     let notificationType = 'info';  // 默认类型为 'info'
@@ -130,6 +132,9 @@ export default
                         // 只有在登录成功时才进行角色存储和页面跳转
                         store.commit('setRole', requestData.role);
                         store.commit('setToken', response.data.token);
+                        // 存储用户信息
+                        store.commit('setUserID', response1.data.userID);
+                        store.commit('setName',  response1.data.userName);
 
                         if (requestData.role === 'admin') {
                             this.$router.push({ path: '/admin' });

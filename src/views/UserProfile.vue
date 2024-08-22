@@ -156,7 +156,7 @@ export default {
     data() {
         return {
             profile: {
-                /*userID: null,
+                userID: null,
                 userName: '',
                 password: '',
                 salt:'',
@@ -171,23 +171,23 @@ export default {
                 goalWeight: null,
                 isMember: null,
                 isPost: null,
-                isDelete: null*/
-                userID: 2,
-                userName: 'hhh',
-                password: 'dfgdgdfg',
-                salt: 'dsgg',
-                email: 'dfg@qq.com',
-                registrationTime: '2023-01-01 00:00:00',
-                iconURL: '', // 这里可以为空或者实际路径
-                age: 15,
-                gender: '男',
-                tags: '帅气',
-                introduction: '阿凡达啊方法呃',
-                goalType: 'aaaa',
-                goalWeight: null,
-                isMember: null,
-                isPost: null,
                 isDelete: null
+                // userID: 2,
+                // userName: 'hhh',
+                // password: 'dfgdgdfg',
+                // salt: 'dsgg',
+                // email: 'dfg@qq.com',
+                // registrationTime: '2023-01-01 00:00:00',
+                // iconURL: '', // 这里可以为空或者实际路径
+                // age: 15,
+                // gender: '男',
+                // tags: '帅气',
+                // introduction: '阿凡达啊方法呃',
+                // goalType: 'aaaa',
+                // goalWeight: null,
+                // isMember: null,
+                // isPost: null,
+                // isDelete: null
             },
             posts: [{
                 postID: null,

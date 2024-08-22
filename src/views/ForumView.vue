@@ -86,7 +86,7 @@
                         <p class="post-snippet">{{ truncatedContent(post.postContent) }}</p>
                     </div>
                     <div class="post-footer">
-                        <span class="post-author">{{ post.userID }}</span>
+                        <span class="post-author">{{ post.userName }}</span>
                         <span class="post-actions">
                             <span class="icon-with-text no-click">
                                 <icon-thumb-up />
@@ -155,37 +155,40 @@ export default {
             newPost: {
                 postID: null,
                 userID: null,
+                userName:'',
                 postTitle: '',
                 postContent: '',
+                postCategory: '',
                 postTime: '',
                 likesCount: null,
                 forwardCount: null,
                 commentsCount: null,
-                refrencePostID: null
+                refrencePostID: null,
             },
             allPosts: [],
-            filteredPosts: [{
-                postID: 1,
-                userID: 2595966,
-                postTitle: 'Test Post 1',
-                postContent: 'Test Content 1 666111111111111111111阿发  ',
-                postTime: '2022-01-01 12:00:00',
-                likesCount: 1,
-                forwardCount: 2,
-                commentsCount: 3,
-                refrencePostID: null
-            },
-            {
-                postID: 2,
-                userID: 3,
-                postTitle: 'Test Post 2',
-                postContent: 'Test Content 2 666111111111111111111阿发8888888888888888888888888888888',
-                postTime: '2022-01-01 12:00:00',
-                likesCount: 3,
-                forwardCount: 4,
-                commentsCount: 5,
-                refrencePostID: null
-            },],
+             filteredPosts: [//{
+            //     postID: 1,
+            //     userID: 2595966,
+            //     postTitle: 'Test Post 1',
+            //     postContent: 'Test Content 1 666111111111111111111阿发  ',
+            //     postTime: '2022-01-01 12:00:00',
+            //     likesCount: 1,
+            //     forwardCount: 2,
+            //     commentsCount: 3,
+            //     refrencePostID: null
+            // },
+            // {
+            //     postID: 2,
+            //     userID: 3,
+            //     postTitle: 'Test Post 2',
+            //     postContent: 'Test Content 2 666111111111111111111阿发8888888888888888888888888888888',
+            //     postTime: '2022-01-01 12:00:00',
+            //     likesCount: 3,
+            //     forwardCount: 4,
+            //     commentsCount: 5,
+            //     refrencePostID: null
+            // },
+            ],
             hotPosts: [],  // 热帖数组
             selectedCategory: "全部帖子", // 初始选中的类别
             currentIndex: 0,
@@ -238,16 +241,18 @@ export default {
             if (category === "全部帖子") {
                 this.filteredPosts = this.allPosts;
             } else {
-                this.filteredPosts = this.allPosts.filter(post => post.category === category);
+                this.filteredPosts = this.allPosts.filter(post => post.postCategory === category);
             }
         },
 
         addPost() {
             const token = this.$store.state.token;
+            const name = localStorage.getItem('name');
             if (this.newPost.title && this.newPost.content && this.newPost.category) {
                 const newPost = {
                     postID: -1,
                     userID: -1,
+                    userName: name,
                     postTitle: this.newPost.title,
                     postContent: this.newPost.content,
                     postCategory: this.newPost.category,

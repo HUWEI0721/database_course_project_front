@@ -5,7 +5,7 @@
             <h1 class="post-title">{{ post.postTitle }}</h1>
 
             <div class="post-info">
-                <span class="post-author" @click="goToAuthorProfile">{{ post.userID }}</span>
+                <span class="post-author" @click="goToAuthorProfile">{{ post.userName }}</span>
                 <span class="post-time">{{ post.postTime }}</span>
             </div>
 
@@ -14,7 +14,7 @@
             </div>
 
             <div class="post-actions">
-                <button @click="toggleLike(post.postID)" class="btn-action">👍 {{ post.liked ? '取消' : '点赞' }} {{
+                <button @click="toggleLike(post.postID)" class="btn-action">👍 {{ postLiked ? '取消' : '点赞' }} {{
                     post.likesCount }}</button>
                 <button @click="toggleComments" class="btn-action">💬 评论 {{ post.commentsCount }}</button>
                 <button @click="reportPost" class="btn-action">🚩 举报</button>
@@ -100,6 +100,7 @@ export default {
             post: {
                 postID: null,
                 userID: null,
+                userName: '',
                 postTitle: '',
                 postContent: '',
                 postTime: '',
@@ -108,6 +109,16 @@ export default {
                 commentsCount: null,
                 refrencePostID: null
             },
+            postLiked: false,
+            // comment:{
+            //     commentID: null,
+            //     userID: null,
+            //     postID: null,
+            //     parentCommentID: null,
+            //     commentTime: null,
+            //     likesCount: null,
+            //     content: ''
+            // },
             comments: [],
             shareDialogVisible: false,
             reportDialogVisible: false,
@@ -129,6 +140,7 @@ export default {
             })
                 .then(response => {
                     this.post = response.data;
+                    //console.log('获取帖子详情成功:', this.post.postID);
                     this.fetchComments(postID);
                 })
                 .catch(error => {
@@ -144,6 +156,7 @@ export default {
                 }
             })
                 .then(response => {
+                    console.log('获取评论成功:', response.data);
                     this.comments = response.data;
                 })
                 .catch(error => {
@@ -179,7 +192,36 @@ export default {
             this.$router.go(-1);
         },
         toggleLike(postID) {
-            this.$store.dispatch('toggleLike', postID);
+            const token = this.$store.state.token; // 从 Vuex 获取 token
+            if (postLiked) {
+                axios.delete('http://localhost:8080/api/PostContoller/CancleLikePost', {
+                    params: { postID: postID },
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                })
+                    .then(() => {
+                        post.likesCount -= 1;
+                        postLiked = false;
+                    })
+                    .catch(error => {
+                        console.error('取消点赞时发生错误:', error);
+                    });
+            } else {
+                axios.post('http://localhost:8080/api/Post/likePost', null, {
+                    params: { postID: post.postID },
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                })
+                    .then(() => {
+                        post.likesCount += 1;
+                        postLiked = true;
+                    })
+                    .catch(error => {
+                        console.error('点赞时发生错误:', error);
+                    });
+            }
         },
         addComment() {
             const token = localStorage.getItem('token');
@@ -298,16 +340,21 @@ export default {
         },
         forwardPost() {
             const token = localStorage.getItem('token');
-            axios.post(`http://localhost:8080/api/Post/ForwardPost`, {
+            const postID = this.$route.params.postID;;
+            console.log('token:', token);
+            console.log('postID:', postID);
+            axios.get(`http://localhost:8080/api/Post/ForwardPost`,{ params:{
                 token: token,
-                refrencePostID: this.post.postID
-            })
+                postID: postID
+            }})
                 .then(response => {
+                    console.log('转发帖子成功:', response.data);
                     if (response.data.message === '成功转发') {
-                        this.$message.success('帖子已成功转发！');
+                        //this.$message.success('帖子已成功转发！');
                         this.post.forwardCount++;
                     } else {
-                        this.$message.error('转发失败');
+                        console.log('转发帖子失败:', response.data.message);
+                        //this.$message.error('转发失败');
                     }
                 })
                 .catch(error => {
