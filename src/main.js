@@ -10,8 +10,10 @@ import store from './store'
 import ArcoVue from '@arco-design/web-vue';
 import '@arco-design/web-vue/dist/arco.css';
 
-const app = createApp(App)
+import Vue3EmojiPicker from 'vue3-emoji-picker';
 
+const app = createApp(App)
+app.component('Vue3EmojiPicker', Vue3EmojiPicker)
 app.use(router)
 app.use(ElementPlus)
 app.use(store)

@@ -23,7 +23,8 @@ const router = createRouter({
     },
     // 论坛界面
     {
-      path: '/forum',
+      path: '/',
+      //path: '/forum',
       name: 'ForumView',
       component: ForumView
     },
@@ -37,8 +38,8 @@ const router = createRouter({
     },
     // 用户信息界面
     {
-      //path: '/user/:userID',
-      path: '/',
+      path: '/user/:userID',
+      //path: '/',
       name: 'UserProfile',
       component: UserProfile,
       props: true
@@ -46,6 +47,7 @@ const router = createRouter({
     // 管理员界面
     {
       path: '/admin',
+      //path: '/',
       name: 'AdminView',
       component: AdminView,
       props: true

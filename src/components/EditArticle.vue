@@ -36,6 +36,23 @@ export default {
     computed: {
         ...mapState(['categories'])
     },
+    methods: {
+        cleanHtml(content) {
+            // 使用正则表达式去除 <p></p> 标签
+            return content.replace(/<\/?p>/g, '');
+        },
+        handleSubmit() {
+            // 调用 cleanHtml 方法清理内容
+            const cleanedContent = this.cleanHtml(this.content);
+
+            // 触发父组件的提交事件，同时传递清理后的内容
+            this.$emit('add-post', {
+                title: this.title,
+                content: cleanedContent,
+                category: this.category
+            });
+        }
+    },
     setup(props, { emit }) {
         const editorRef = shallowRef()
 

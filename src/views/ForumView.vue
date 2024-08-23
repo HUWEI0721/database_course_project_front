@@ -82,7 +82,10 @@
                 <!-- 帖子列表部分 -->
                 <div v-for="post in filteredPosts" :key="post.postID" class="post-item">
                     <div class="post-content">
-                        <h3 class="post-title" @click="viewPost(post.postID)">{{ post.postTitle }}</h3>
+                        <h3 class="post-title" @click="viewPost(post.postID)">
+                            {{ post.postTitle }}
+                            <span class="category-tag">{{ post.postCategory }}</span>
+                        </h3>
                         <p class="post-snippet">{{ truncatedContent(post.postContent) }}</p>
                     </div>
                     <div class="post-footer">
@@ -95,6 +98,10 @@
                             <span class="icon-with-text no-click">
                                 <icon-message />
                                 <span>{{ post.commentsCount }}</span>
+                            </span>
+                            <span class="icon-with-text no-click">
+                                <icon-share-alt />
+                                <span>{{ post.forwardCount }}</span>
                             </span>
                         </span>
                     </div>
@@ -126,13 +133,12 @@
     </div>
 </template>
 
-
 <script>
 import axios from 'axios';
 import { mapState } from 'vuex';
 import NavigationBar from '@/components/NavigationBar.vue';
 import EditArticle from '@/components/EditArticle.vue';
-import { IconThumbUp, IconMessage, IconEye, IconDelete, IconCalendar, IconTrophy, IconArrowRight, IconFire, IconHome } from '@arco-design/web-vue/es/icon';
+import { IconThumbUp, IconMessage, IconCalendar, IconTrophy, IconArrowRight, IconFire, IconHome, IconShareAlt } from '@arco-design/web-vue/es/icon';
 import { postMixin } from '@/mixins/postMixin.js';
 
 export default {
@@ -143,8 +149,7 @@ export default {
         IconHome,
         IconThumbUp,
         IconMessage,
-        IconEye,
-        IconDelete,
+        IconShareAlt,
         IconCalendar,
         IconTrophy,
         IconArrowRight,
@@ -155,7 +160,7 @@ export default {
             newPost: {
                 postID: null,
                 userID: null,
-                userName:'',
+                userName: '',
                 postTitle: '',
                 postContent: '',
                 postCategory: '',
@@ -165,30 +170,22 @@ export default {
                 commentsCount: null,
                 refrencePostID: null,
             },
-            allPosts: [],
-             filteredPosts: [//{
-            //     postID: 1,
-            //     userID: 2595966,
-            //     postTitle: 'Test Post 1',
-            //     postContent: 'Test Content 1 666111111111111111111阿发  ',
-            //     postTime: '2022-01-01 12:00:00',
-            //     likesCount: 1,
-            //     forwardCount: 2,
-            //     commentsCount: 3,
-            //     refrencePostID: null
-            // },
-            // {
-            //     postID: 2,
-            //     userID: 3,
-            //     postTitle: 'Test Post 2',
-            //     postContent: 'Test Content 2 666111111111111111111阿发8888888888888888888888888888888',
-            //     postTime: '2022-01-01 12:00:00',
-            //     likesCount: 3,
-            //     forwardCount: 4,
-            //     commentsCount: 5,
-            //     refrencePostID: null
-            // },
+            allPosts: [
+                /*{
+                    postID: 1,
+                    userID: 2,
+                    userName: 'hu',
+                    postTitle: 'sddfds',
+                    postContent: 'sfdsfsfsfs',
+                    postCategory: '健身计划',
+                    postTime: '2023-01-01',
+                    likesCount: 6,
+                    forwardCount: 8,
+                    commentsCount: 10,
+                    refrencePostID: null,
+                }*/
             ],
+            filteredPosts: [],
             hotPosts: [],  // 热帖数组
             selectedCategory: "全部帖子", // 初始选中的类别
             currentIndex: 0,
@@ -248,13 +245,17 @@ export default {
         addPost() {
             const token = this.$store.state.token;
             const name = localStorage.getItem('name');
+
             if (this.newPost.title && this.newPost.content && this.newPost.category) {
+                // 清理 <p></p> 标签
+                const cleanedContent = this.cleanHtml(this.newPost.content);
+                console.log(cleanedContent);
                 const newPost = {
                     postID: -1,
                     userID: -1,
                     userName: name,
                     postTitle: this.newPost.title,
-                    postContent: this.newPost.content,
+                    postContent: cleanedContent, // 使用清理后的内容
                     postCategory: this.newPost.category,
                     postTime: new Date().toISOString(),
                     likesCount: 0,
@@ -262,6 +263,7 @@ export default {
                     commentsCount: 0,
                     refrencepostID: -1,
                 };
+
                 axios.post(`http://localhost:8080/api/Post/PublishPost?token=${token}`, newPost)
                     .then(response => {
                         this.allPosts.push(newPost);
@@ -274,6 +276,9 @@ export default {
             } else {
                 alert('请填写所有字段！');
             }
+        },
+        cleanHtml(content) {
+            return content.replace(/<\/?p>/g, ''); // 清理 <p> 标签
         },
 
         resetNewPostForm() {
@@ -498,6 +503,15 @@ body {
     color: #007bff;
     margin-bottom: 10px;
     cursor: pointer;
+}
+
+.post-title .category-tag {
+    background-color: #f0f0f0;
+    border-radius: 50px;
+    padding: 3px 8px;
+    font-size: 12px;
+    color: #555;
+    margin-left: 10px;
 }
 
 .post-snippet {

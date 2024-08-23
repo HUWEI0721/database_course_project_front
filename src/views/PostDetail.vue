@@ -1,6 +1,28 @@
 <template>
     <div class="forum-bg">
-        <el-button icon="el-icon-back" class="back-button" @click="goBack" />
+        <button class="back-button" @click="goBack">
+            <icon-arrow-left />
+        </button>
+
+        <!-- 相关帖子推荐 -->
+        <el-card class="card">
+            <div class="related-posts-section">
+                <el-row class="row">
+                    <el-col :span="20">
+                        <el-text class="title">相关帖子推荐</el-text>
+                    </el-col>
+                </el-row>
+                <div class="related-posts-content">
+                    <el-divider />
+                    <div v-for="post in relatedPosts" :key="post.postID">
+                        <el-text @click="goToPost(post.postID)" class="related-post-title">{{ post.postTitle
+                            }}</el-text>
+                        <el-divider />
+                    </div>
+                </div>
+            </div>
+        </el-card>
+
         <div class="post-container">
             <h1 class="post-title">{{ post.postTitle }}</h1>
 
@@ -14,9 +36,12 @@
             </div>
 
             <div class="post-actions">
-                <button @click="toggleLike(post.postID)" class="btn-action">👍 {{ postLiked ? '取消' : '点赞' }} {{
-                    post.likesCount }}</button>
-                <button @click="toggleComments" class="btn-action">💬 评论 {{ post.commentsCount }}</button>
+                <button @click="toggleLike(post.postID)" class="btn-action">
+                    👍 {{ postLiked ? '取消' : '点赞' }} {{ post.likesCount }}
+                </button>
+                <button @click="toggleComments" class="btn-action">
+                    💬 评论 {{ post.commentsCount }}
+                </button>
                 <button @click="reportPost" class="btn-action">🚩 举报</button>
                 <button @click="openShareDialog" class="btn-action">🔗 分享</button>
                 <button @click="forwardPost" class="btn-action">🔄 转发</button>
@@ -27,19 +52,22 @@
                 <div v-for="comment in comments" :key="comment.commentID" class="comment-item">
                     <p><strong>{{ comment.userName }}</strong>: {{ comment.content }}</p>
                     <div class="comment-actions">
-                        <span @click="likeComment(comment.commentID)">👍 {{ comment.likedByCurrentUser ? '取消' : '点赞' }}
-                            {{ comment.likesCount }}</span>
+                        <span @click="likeComment(comment.commentID)">
+                            👍 {{ comment.likedByCurrentUser ? '取消' : '点赞' }} {{ comment.likesCount }}
+                        </span>
                         <span @click="setReplyTarget(comment)">回复</span>
                         <span v-if="isCurrentUser(comment.userName)" @click="deleteComment(comment.commentID)">删除</span>
                         <button @click="toggleReplies(comment)" class="btn-action">显示回复</button>
                     </div>
+
                     <!-- 评论的回复 -->
                     <div v-if="comment.showReplies" v-for="reply in comment.replies" :key="reply.commentID"
                         class="reply-item">
                         <p><strong>@{{ reply.userName }}: </strong>{{ reply.content }}</p>
                         <div class="comment-actions">
-                            <span @click="likeComment(reply.commentID)">👍 {{ reply.likedByCurrentUser ? '取消' : '点赞' }}
-                                {{ reply.likesCount }}</span>
+                            <span @click="likeComment(reply.commentID)">
+                                👍 {{ reply.likedByCurrentUser ? '取消' : '点赞' }} {{ reply.likesCount }}
+                            </span>
                             <span @click="setReplyTarget(reply)">回复</span>
                             <span v-if="isCurrentUser(reply.userName)" @click="deleteReply(reply.commentID)">删除</span>
                         </div>
@@ -52,10 +80,37 @@
                 </div>
 
                 <!-- 输入框和提交按钮 -->
-                <textarea v-model="newCommentText" placeholder="写下你的评论..." @focus="clearReplyTarget"></textarea>
-                <button @click="addComment">发表评论</button>
+                <div class="input-container">
+                    <textarea v-model="newCommentText" placeholder="写下你的评论..." @focus="clearReplyTarget"></textarea>
+                    <div class="actions">
+                        <button class="emoji-button" ref="emojiButton" @click="toggleEmojiPicker">😊</button>
+                        <button class="btn-primary" @click="addComment">发表评论</button>
+                    </div>
+                </div>
             </div>
         </div>
+
+        <!-- 热帖推荐 -->
+        <el-card class="right-sidebar">
+            <div class="hot-posts-section">
+                <el-row class="row">
+                    <el-col :span="4">
+                        <icon-fire />
+                    </el-col>
+                    <el-col :span="20">
+                        <el-text class="title">热帖推荐</el-text>
+                    </el-col>
+                </el-row>
+                <div class="hot-posts-content">
+                    <el-divider />
+                    <el-text v-for="hotPost in hotPosts" :key="hotPost.postID" @click="goToPost(hotPost.postID)"
+                        class="hot-post-title">
+                        <icon-fire class="icon-fire-small" /> {{ hotPost.postTitle }}
+                    </el-text>
+                    <el-divider />
+                </div>
+            </div>
+        </el-card>
 
         <!-- 分享弹窗 -->
         <el-dialog title="分享帖子" :visible="shareDialogVisible" width="30%" v-model="shareDialogVisible">
@@ -83,15 +138,19 @@
                 </span>
             </template>
         </el-dialog>
-
     </div>
 </template>
 
 <script>
-import { mapState } from 'vuex';
 import axios from 'axios';
+import { IconArrowLeft, IconFire } from '@arco-design/web-vue/es/icon';
+import { EmojiButton } from '@joeattardi/emoji-button';
 
 export default {
+    components: {
+        IconArrowLeft,
+        IconFire,
+    },
     data() {
         return {
             showComments: false,
@@ -125,10 +184,19 @@ export default {
             shareLink: ""
         };
     },
-    created() {
-        this.fetchPostDetail();
+    mounted() {
+        this.emojiPicker = new EmojiButton({
+            position: 'bottom-start',
+            zIndex: 9999, // 确保在所有元素之上
+        });
+        this.emojiPicker.on('emoji', selection => {
+            this.newCommentText += selection.emoji; // 确保加入的是表情符号而不是代码
+        });
     },
     methods: {
+        isCurrentUser(userName) {
+            return this.currentUser === userName;
+        },
         fetchPostDetail() {
             const token = localStorage.getItem('token');
             const postID = this.$route.params.postID;
@@ -140,7 +208,6 @@ export default {
             })
                 .then(response => {
                     this.post = response.data;
-                    //console.log('获取帖子详情成功:', this.post.postID);
                     this.fetchComments(postID);
                 })
                 .catch(error => {
@@ -156,7 +223,6 @@ export default {
                 }
             })
                 .then(response => {
-                    console.log('获取评论成功:', response.data);
                     this.comments = response.data;
                 })
                 .catch(error => {
@@ -192,8 +258,8 @@ export default {
             this.$router.go(-1);
         },
         toggleLike(postID) {
-            const token = this.$store.state.token; // 从 Vuex 获取 token
-            if (postLiked) {
+            const token = this.$store.state.token;
+            if (this.postLiked) {
                 axios.delete('http://localhost:8080/api/PostContoller/CancleLikePost', {
                     params: { postID: postID },
                     headers: {
@@ -201,22 +267,22 @@ export default {
                     }
                 })
                     .then(() => {
-                        post.likesCount -= 1;
-                        postLiked = false;
+                        this.post.likesCount -= 1;
+                        this.postLiked = false;
                     })
                     .catch(error => {
                         console.error('取消点赞时发生错误:', error);
                     });
             } else {
                 axios.post('http://localhost:8080/api/Post/likePost', null, {
-                    params: { postID: post.postID },
+                    params: { postID: postID },
                     headers: {
                         Authorization: `Bearer ${token}`
                     }
                 })
                     .then(() => {
-                        post.likesCount += 1;
-                        postLiked = true;
+                        this.post.likesCount += 1;
+                        this.postLiked = true;
                     })
                     .catch(error => {
                         console.error('点赞时发生错误:', error);
@@ -340,38 +406,69 @@ export default {
         },
         forwardPost() {
             const token = localStorage.getItem('token');
-            const postID = this.$route.params.postID;;
-            console.log('token:', token);
-            console.log('postID:', postID);
-            axios.get(`http://localhost:8080/api/Post/ForwardPost`,{ params:{
-                token: token,
-                postID: postID
-            }})
+            const postID = this.$route.params.postID;
+            axios.get(`http://localhost:8080/api/Post/ForwardPost`, {
+                params: {
+                    token: token,
+                    postID: postID
+                }
+            })
                 .then(response => {
-                    console.log('转发帖子成功:', response.data);
                     if (response.data.message === '成功转发') {
-                        //this.$message.success('帖子已成功转发！');
                         this.post.forwardCount++;
                     } else {
-                        console.log('转发帖子失败:', response.data.message);
-                        //this.$message.error('转发失败');
+                        console.error('转发帖子失败:', response.data.message);
                     }
                 })
                 .catch(error => {
                     console.error('转发帖子时发生错误:', error);
                 });
-        }
-    }
-};
+        },
+        fetchRelatedPosts() {
+            axios.get('http://localhost:8080/api/Post/GetAllPost')
+                .then(response => {
+                    const allPosts = response.data;
+                    const sameCategoryPosts = allPosts.filter(
+                        post => post.postCategory === this.post.postCategory
+                    );
+                    this.relatedPosts = sameCategoryPosts.sort(() => 0.5 - Math.random()).slice(0, 5);
+                })
+                .catch(error => {
+                    console.error('获取相关帖子时发生错误:', error);
+                });
+        },
+        fetchHotPosts() {
+            axios.get('http://localhost:8080/api/Post/GetAllPost')
+                .then(response => {
+                    const allPosts = response.data;
+                    this.hotPosts = allPosts
+                        .sort((a, b) => (b.likesCount + b.commentsCount) - (a.likesCount + a.commentsCount))
+                        .slice(0, 5);
+                })
+                .catch(error => {
+                    console.error('获取热帖时发生错误:', error);
+                });
+        },
+        goToPost(postID) {
+            this.$router.push(`/post/${postID}`);
+        },
+        toggleEmojiPicker() {
+            document.body.style.overflow = this.emojiPicker.isOpen ? '' : 'hidden';
+            this.emojiPicker.togglePicker(this.$refs.emojiButton);
+        },
+        beforeDestroy() {
+            // 恢复滚动条状态
+            document.body.style.overflow = '';
+        },
+    },
+
+
+}
 </script>
 
 <style scoped>
-/* 原样保留样式代码 */
-</style>
-
-
-<style scoped>
 .forum-bg {
+    display: flex;
     background-image: url('../components/icons/forum-bg.jpg');
     background-size: cover;
     background-position: center;
@@ -382,16 +479,16 @@ export default {
     top: 0;
     left: 0;
     padding-bottom: 60px;
+    overflow-y: scroll;
 }
 
 .post-container {
     display: flex;
     flex-direction: column;
-    max-width: 900px;
+    width: 800px;
     margin: 0 auto;
     background-color: transparent;
     border: none;
-    overflow-y: auto;
 }
 
 .post-title {
@@ -447,7 +544,7 @@ export default {
     background-color: #007bff;
     color: white;
     padding: 10px 20px;
-    border-radius: 5px;
+    border-radius: 10px;
     cursor: pointer;
     font-size: 14px;
     border: none;
@@ -455,6 +552,7 @@ export default {
 
 .comments-section {
     margin-top: 40px;
+    width: 800px;
 }
 
 .comment-item,
@@ -464,6 +562,7 @@ export default {
     background-color: #f9f9f9;
     border-radius: 5px;
     border: 1px solid #ddd;
+    width: 800px;
 }
 
 .comment-actions {
@@ -490,14 +589,112 @@ textarea {
     resize: none;
 }
 
+.input-container {
+    position: relative;
+    width: 100%;
+}
+
+.actions {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    display: flex;
+    gap: 10px;
+}
+
+.emoji-button {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    position: relative;
+}
+
+.btn-primary {
+    background-color: #007bff;
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+}
+
 .back-button {
     position: absolute;
     top: 20px;
     left: 20px;
-    background-color: #007bff;
-    color: black;
+    background-color: #FFFAFA;
+    border-radius: 10px;
     border: none;
-    font-size: 24px;
+    font-size: 30px;
     cursor: pointer;
+    padding: 1px 10px;
+    transition: background-color 0.3s ease;
+}
+
+.back-button:hover {
+    background-color: #33ff33;
+    /* 鼠标悬停时的背景颜色 */
+}
+
+.card {
+    margin-top: 65px;
+    width: 300px;
+    height: max-content;
+    background-color: transparent;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    margin-bottom: 20px;
+}
+
+.related-posts-section .title,
+.hot-posts-section .title {
+    font-size: 16px;
+    font-weight: bolder;
+    color: #000;
+    padding-left: 0;
+}
+
+.related-post-title,
+.hot-post-title {
+    font-size: 14px;
+    color: #007bff;
+    cursor: pointer;
+    padding-left: 16px;
+}
+
+.related-post-title:hover,
+.hot-post-title:hover {
+    text-decoration: underline;
+}
+
+.row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    margin-left: 20px;
+}
+
+.right-sidebar {
+    margin-top: 65px;
+    width: 300px;
+    background-color: transparent;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    margin-bottom: 10px;
+    padding-left: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: left;
+}
+
+.hot-posts-content {
+    padding-left: 16px;
+    padding-right: 16px;
+}
+
+.icon-fire-small {
+    font-size: 16px;
+    margin-right: 8px;
 }
 </style>
