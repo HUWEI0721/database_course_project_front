@@ -62,74 +62,66 @@
                         </el-menu>
                     </el-aside>
                     <el-main>
+                        <!-- 用户管理界面 -->
                         <div v-if="active == 1">
-                            <el-table :data="users" style="width: 100%">
-                                <el-table-column prop="username" label="用户名"></el-table-column>
-                                <el-table-column prop="email" label="邮箱"></el-table-column>
-                                <el-table-column prop="registrationDate" label="注册日期">
+                            <el-input v-model="searchQuery" placeholder="搜索用户ID或用户名" clearable class="search-box" />
+                            <el-table :data="filteredUsers" style="width: 100%">
+                                <el-table-column prop="userName" label="用户名"></el-table-column>
+                                <el-table-column prop="userID" label="用户ID"></el-table-column>
+                                <el-table-column prop="registrationTime" label="注册日期">
                                     <template #default="{ row }">
-                                        {{ formatDate(row.registrationDate) }}
-                                    </template>
-                                </el-table-column>
-                                <el-table-column prop="activityCount" label="活动记录数">
-                                    <template #default="{ row }">
-                                        <el-tag type="success">{{ row.activityCount }}</el-tag>
-                                    </template>
-                                </el-table-column>
-                                <el-table-column fixed="right" label="操作" width="250">
-                                    <template #default="{ row }">
-                                        <el-button size="small" type="danger"
-                                            @click="restrictUser(row)">限制言论</el-button>
-                                        <el-button size="small" type="warning"
-                                            @click="deactivateUser(row)">注销账户</el-button>
-                                    </template>
-                                </el-table-column>
-                            </el-table>
-                        </div>
-                        <div v-if="active == 2">
-                            <el-table :data="contentList" style="width: 100%">
-                                <el-table-column prop="title" label="标题"></el-table-column>
-                                <el-table-column prop="author" label="作者"></el-table-column>
-                                <el-table-column prop="type" label="类型">
-                                    <template #default="{ row }">
-                                        <el-tag :type="row.type === 'post' ? 'info' : 'warning'">{{ row.type === 'post'
-                                            ?
-                                            '帖子' : '评论' }}</el-tag>
+                                        {{ formatDate(row.registrationTime) }}
                                     </template>
                                 </el-table-column>
                                 <el-table-column prop="status" label="状态">
                                     <template #default="{ row }">
-                                        <el-tag :type="row.status === 'active' ? 'success' : 'danger'">{{ row.status
+                                        <el-tag :type="getTagType(row)" :style="getTagStyle(row)">{{ row.status
                                             }}</el-tag>
                                     </template>
                                 </el-table-column>
-                                <el-table-column prop="date" label="发布时间">
+                                <el-table-column fixed="right" label="操作" width="250">
                                     <template #default="{ row }">
-                                        {{ formatDate(row.date) }}
-                                    </template>
-                                </el-table-column>
-                                <el-table-column fixed="right" label="操作" width="300">
-                                    <template #default="{ row }">
-                                        <el-button size="small" type="danger" @click="deleteContent(row)">删除</el-button>
-                                        <el-button size="small" @click="getComments(row)">查看评论</el-button>
-                                        <el-button v-if="row.type === 'post'" size="small" type="warning"
-                                            @click="mergePosts(row)">合并</el-button>
-                                        <el-button v-if="row.type === 'post'" size="small" type="primary"
-                                            @click="flagPost(row)">标注</el-button>
+                                        <el-button size="small" type="danger" @click="restrictUser(row)"
+                                            :disabled="row.status !== '正常'">限制言论</el-button>
+                                        <el-button size="small" type="warning" @click="deactivateUser(row)"
+                                            :disabled="row.status === '已删除'">删除用户</el-button>
                                     </template>
                                 </el-table-column>
                             </el-table>
+                        </div>
 
-                            <el-dialog v-model="dialogVisible" :title="article.title" width="500"
-                                :before-close="handleClose">
-                                <span>{{ article.content }}</span>
-                                <template #footer>
-                                    <div class="dialog-footer">
-                                        <el-button @click="dialogVisible = false">取消</el-button>
-                                        <el-button type="primary" @click="">确认</el-button>
-                                    </div>
-                                </template>
-                            </el-dialog>
+                        <!-- 内容管理界面 -->
+                        <div v-if="active == 2">
+                            <el-table :data="contentList" style="width: 100%">
+                                <el-table-column prop="postTitle" label="标题"></el-table-column>
+                                <el-table-column prop="userName" label="作者"></el-table-column>
+                                <el-table-column prop="postCategory" label="类型">
+                                    <template #default="{ row }">
+                                        <el-tag :type="row.postCategory === 'post' ? 'info' : 'warning'">{{
+                                            row.postCategory === 'post'
+                                                ? '帖子' : '评论' }}</el-tag>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column prop="postTime" label="发布时间">
+                                    <template #default="{ row }">
+                                        {{ formatDate(row.postTime) }}
+                                    </template>
+                                </el-table-column>
+                                <el-table-column prop="status" label="状态">
+                                    <template #default="{ row }">
+                                        <el-tag :type="getTagType(row)" :style="getTagStyle(row)">{{ row.status
+                                            }}</el-tag>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column fixed="right" label="操作" width="250">
+                                    <template #default="{ row }">
+                                        <el-button size="small" type="danger" @click="deleteContent(row)"
+                                            :disabled="row.status === '已删除'">删除</el-button>
+                                        <el-button size="small" @click="getComments(row)"
+                                            :disabled="row.status === '已删除'">查看评论</el-button>
+                                    </template>
+                                </el-table-column>
+                            </el-table>
                         </div>
                     </el-main>
                 </el-container>
@@ -139,102 +131,186 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from "vue-router";
-
-import {
-    Document,
-    Menu as IconMenu,
-    Location,
-    Setting,
-} from "@element-plus/icons-vue";
+import axios from 'axios';
+import { IconMenu } from '@arco-design/web-vue/es/icon';
 
 const router = useRouter();
 let active = ref(1);
+let searchQuery = ref('');
 let dialogVisible = ref(false);
 let article = ref({
     content: '',
-    title: ''
+    title: '',
+    comments: []
 });
 
-// 用户管理示例数据
-const users = ref([
-    {
-        id: 1,
-        username: 'user1',
-        email: 'user1@example.com',
-        registrationDate: new Date(),
-        activityCount: 10,
-    },
-    {
-        id: 2,
-        username: 'user2',
-        email: 'user2@example.com',
-        registrationDate: new Date(),
-        activityCount: 5,
-    },
-]);
+// 用户信息数据结构
+const users = ref([]);
 
-// 内容管理示例数据
-const contentList = ref([
-    {
-        id: 1,
-        title: '帖子标题1',
-        author: 'user1',
-        date: new Date(),
-        type: 'post',
-        status: 'active',
-    },
-    {
-        id: 2,
-        title: '帖子标题2',
-        author: 'user2',
-        date: new Date(),
-        type: 'post',
-        status: 'inactive',
-    },
-    {
-        id: 3,
-        title: '评论内容1',
-        author: 'user3',
-        date: new Date(),
-        type: 'comment',
-        status: 'active',
-    },
-]);
+// 帖子数据结构
+const contentList = ref([]);
+
+// 过滤用户数据
+const filteredUsers = computed(() => {
+    if (searchQuery.value === '') {
+        return users.value;
+    }
+    return users.value.filter(user => user.userName.includes(searchQuery.value) || String(user.userID).includes(searchQuery.value));
+});
+
+// 获取用户信息
+async function fetchUsers() {
+    try {
+        const response = await axios.get('http://localhost:8080/api/User/GetAllUsers');
+        users.value = response.data;
+        users.value.forEach(user => {
+            user.status = '正常';
+        });
+    } catch (error) {
+        console.error('获取用户信息失败', error);
+    }
+}
+
+// 获取帖子信息
+async function fetchPosts() {
+    try {
+        const response = await axios.get('http://localhost:8080/api/Post/GetAllPosts');
+        contentList.value = response.data;
+        contentList.value.forEach(post => {
+            post.status = '正常';
+        });
+    } catch (error) {
+        console.error('获取帖子信息失败', error);
+    }
+}
+
+// 页面加载时获取数据
+onMounted(() => {
+    fetchUsers();
+    fetchPosts();
+});
 
 // 格式化日期
 function formatDate(date) {
     const d = new Date(date);
-    return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const seconds = String(d.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
+// 获取标签样式
+function getTagStyle(row) {
+    if (row.status === '正常') return { backgroundColor: 'green', color: 'white' };
+    if (row.status === '已禁言') return { backgroundColor: 'yellow', color: 'black' };
+    if (row.status === '已删除') return { backgroundColor: 'red', color: 'white' };
+    return {};
+}
+
+// 获取标签类型
+function getTagType(row) {
+    if (row.status === '正常') return 'success';
+    if (row.status === '已禁言') return 'warning';
+    if (row.status === '已删除') return 'danger';
+    return 'info';
 }
 
 // 用户管理操作
-function restrictUser(user) {
-    console.log(`限制用户 ${user.username} 的言论`);
+async function restrictUser(user) {
+    try {
+        const response = await axios.post('http://localhost:8080/api/User/RestrictUser', {
+            userID: user.userID,
+        });
+        if (response.data.message === '禁言成功') {
+            user.status = '已禁言';
+        }
+        console.log(`限制用户 ${user.userName} 的言论: ${response.data.message}`);
+    } catch (error) {
+        console.error('限制用户言论失败', error);
+    }
 }
 
-function deactivateUser(user) {
-    console.log(`注销用户 ${user.username} 的账户`);
+async function deactivateUser(user) {
+    try {
+        const response = await axios.delete('http://localhost:8080/api/User/DeleteUser', {
+            data: {
+                userID: user.userID,
+            },
+        });
+        if (response.data.message === '删除成功') {
+            user.status = '已删除';
+        }
+        console.log(`删除用户 ${user.userName}: ${response.data.message}`);
+    } catch (error) {
+        console.error('删除用户失败', error);
+    }
 }
 
 // 内容管理操作
-function getComments(row) {
-    dialogVisible.value = true;
-    article.value.content = row.author;
-    article.value.title = row.title;
+async function deleteContent(content) {
+    try {
+        const response = await axios.delete(content.postCategory === 'post' ? 'http://localhost:8080/api/Post/DeletePostByPostID' : 'http://localhost:8080/api/Comment/DeleteComment', {
+            data: {
+                postID: content.postID,
+            },
+        });
+        if (response.data.message === '删除成功') {
+            content.status = '已删除';
+        }
+        console.log(`删除内容: ${content.postTitle}: ${response.data.message}`);
+    } catch (error) {
+        console.error('删除内容失败', error);
+    }
 }
 
-function deleteContent(content) {
-    console.log(`删除内容: ${content.title}`);
+// 查看评论操作
+async function getComments(row) {
+    try {
+        const mainComments = await fetchMainComments(row.postID);
+        for (let comment of mainComments) {
+            comment.replies = await fetchCommentReplies(comment.commentID);
+        }
+        article.value.title = row.postTitle;
+        article.value.comments = mainComments;
+        dialogVisible.value = true;
+    } catch (error) {
+        console.error('获取评论失败', error);
+    }
 }
 
-function mergePosts(post) {
-    console.log(`合并帖子: ${post.title}`);
+// 获取主评论信息
+async function fetchMainComments(postID) {
+    try {
+        const response = await axios.get('http://localhost:8080/api/Comment/GetCommentByPostID', {
+            params: {
+                postID: postID,
+            },
+        });
+        return response.data;
+    } catch (error) {
+        console.error('获取主评论信息失败', error);
+        return [];
+    }
 }
 
-function flagPost(post) {
-    console.log(`标注帖子: ${post.title}`);
+// 获取评论的回复
+async function fetchCommentReplies(commentID) {
+    try {
+        const response = await axios.get('http://localhost:8080/api/Comment/GetCommentByCommentID', {
+            params: {
+                commentID: commentID,
+            },
+        });
+        return response.data;
+    } catch (error) {
+        console.error('获取评论回复失败', error);
+        return [];
+    }
 }
 
 // 导航操作
@@ -248,7 +324,7 @@ const handleClose = (key, keyPath) => {
 
 const openUser = () => {
     router.push({
-        path: "/Profile",
+        path: "/user/:userID",
     });
 };
 
@@ -314,6 +390,10 @@ const goPage = (path) => {
 .user {
     position: absolute;
     right: 2%;
+}
+
+.search-box {
+    margin-bottom: 10px;
 }
 
 .el-scrollbar__view {
