@@ -163,7 +163,8 @@ const filteredUsers = computed(() => {
 // 获取用户信息
 async function fetchUsers() {
     try {
-        const response = await axios.get('http://localhost:8080/api/User/GetAllUsers');
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`http://localhost:8080/api/User/GetAllUser?token=${token}`);
         users.value = response.data;
         users.value.forEach(user => {
             user.status = '正常';
@@ -176,7 +177,8 @@ async function fetchUsers() {
 // 获取帖子信息
 async function fetchPosts() {
     try {
-        const response = await axios.get('http://localhost:8080/api/Post/GetAllPosts');
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`http://localhost:8080/api/Post/GetAllPost?token=${token}`);
         contentList.value = response.data;
         contentList.value.forEach(post => {
             post.status = '正常';
@@ -223,9 +225,11 @@ function getTagType(row) {
 // 用户管理操作
 async function restrictUser(user) {
     try {
-        const response = await axios.post('http://localhost:8080/api/User/RestrictUser', {
+        const response = await axios.get('http://localhost:8080/api/User/BanUser', {
+            params:{
+            token: localStorage.getItem('token'),
             userID: user.userID,
-        });
+        }});
         if (response.data.message === '禁言成功') {
             user.status = '已禁言';
         }
@@ -237,11 +241,11 @@ async function restrictUser(user) {
 
 async function deactivateUser(user) {
     try {
-        const response = await axios.delete('http://localhost:8080/api/User/DeleteUser', {
-            data: {
-                userID: user.userID,
-            },
-        });
+        const response = await axios.get('http://localhost:8080/api/User/RemoveUser',  {
+            params:{
+            token: localStorage.getItem('token'),
+            userID: user.userID,
+        }});
         if (response.data.message === '删除成功') {
             user.status = '已删除';
         }
@@ -254,15 +258,30 @@ async function deactivateUser(user) {
 // 内容管理操作
 async function deleteContent(content) {
     try {
-        const response = await axios.delete(content.postCategory === 'post' ? 'http://localhost:8080/api/Post/DeletePostByPostID' : 'http://localhost:8080/api/Comment/DeleteComment', {
-            data: {
+        const response =null;
+        console.log(localStorage.getItem('token'));
+        console.log(content.postID);
+        if(content.postCategory === 'post'){
+            console.log('post');
+            response = await axios.delete('http://localhost:8080/api/Post/DeletePostByPostID',{params:{
+                token: localStorage.getItem('token'),
                 postID: content.postID,
-            },
-        });
-        if (response.data.message === '删除成功') {
+            }});
+            if (response.data.message === '删除帖子成功') {
             content.status = '已删除';
         }
-        console.log(`删除内容: ${content.postTitle}: ${response.data.message}`);
+        console.log(`删除内容成功: ${response.data.message}`);
+        }
+        else{
+            response = await axios.delete('http://localhost:8080/api/Comment/DeleteComment',{params:{
+                token: localStorage.getItem('token'),
+                commentID: content.commentID,
+            }})
+            if (response.data.message === '评论删除成功') {
+            content.status = '已删除';
+        }
+        console.log(`删除内容成功: ${response.data.message}`);
+        }
     } catch (error) {
         console.error('删除内容失败', error);
     }
@@ -288,6 +307,7 @@ async function fetchMainComments(postID) {
     try {
         const response = await axios.get('http://localhost:8080/api/Comment/GetCommentByPostID', {
             params: {
+                token: localStorage.getItem('token'),
                 postID: postID,
             },
         });
@@ -303,6 +323,7 @@ async function fetchCommentReplies(commentID) {
     try {
         const response = await axios.get('http://localhost:8080/api/Comment/GetCommentByCommentID', {
             params: {
+                token: localStorage.getItem('token'),
                 commentID: commentID,
             },
         });

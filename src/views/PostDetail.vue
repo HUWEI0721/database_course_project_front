@@ -193,6 +193,9 @@ export default {
             this.newCommentText += selection.emoji; // 确保加入的是表情符号而不是代码
         });
     },
+    created() {
+        this.fetchPostDetail();
+    },
     methods: {
         isCurrentUser(userName) {
             return this.currentUser === userName;
@@ -258,13 +261,13 @@ export default {
             this.$router.go(-1);
         },
         toggleLike(postID) {
-            const token = this.$store.state.token;
+            //const token = this.$store.state.token;
+            const token = localStorage.getItem('token');
             if (this.postLiked) {
-                axios.delete('http://localhost:8080/api/PostContoller/CancleLikePost', {
-                    params: { postID: postID },
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
+                axios.get('http://localhost:8080/api/Post/CancleLikePost', {
+                    params: {
+                        token: token,
+                        postID: postID }
                 })
                     .then(() => {
                         this.post.likesCount -= 1;
@@ -274,11 +277,10 @@ export default {
                         console.error('取消点赞时发生错误:', error);
                     });
             } else {
-                axios.post('http://localhost:8080/api/Post/likePost', null, {
-                    params: { postID: postID },
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
+                axios.get('http://localhost:8080/api/Post/LikePost',  {
+                    params: {
+                        token: token,
+                        postID: postID }
                 })
                     .then(() => {
                         this.post.likesCount += 1;
@@ -295,6 +297,7 @@ export default {
                 const newComment = {
                     commentID: -1,
                     userID: this.$store.state.userID,
+                    userName: localStorage.getItem('name'),
                     postID: this.post.postID,
                     parentCommentID: this.replyingTo ? this.replyingTo.commentID : -1,
                     commentTime: new Date().toISOString(),
@@ -305,7 +308,8 @@ export default {
                 if (this.replyingTo) {
                     axios.post(`http://localhost:8080/api/Comment/ReplyComment?token=${token}`, newComment)
                         .then(response => {
-                            if (response.data.message === '回复成功') {
+                            console.log("请求成功：",response.data)
+                            if (response.data === '回复成功') {
                                 this.replyingTo.replies.push(newComment);
                                 this.replyingTo = null;
                             } else {
@@ -318,7 +322,7 @@ export default {
                 } else {
                     axios.post(`http://localhost:8080/api/Comment/PublishComment?token=${token}`, newComment)
                         .then(response => {
-                            if (response.data.message === '发布评论成功') {
+                            if (response.data === '发布评论成功') {
                                 this.comments.push(newComment);
                                 this.post.commentsCount++;
                                 this.newCommentText = "";
@@ -334,7 +338,7 @@ export default {
         },
         likeComment(commentID) {
             const token = localStorage.getItem('token');
-            axios.post('http://localhost:8080/api/Comment/likeComment', {
+            axios.get('http://localhost:8080/api/Comment/LikeComment', {
                 params: {
                     token: token,
                     commentID: commentID
