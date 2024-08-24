@@ -39,37 +39,52 @@
                 <button @click="toggleLike(post.postID)" class="btn-action">
                     👍 {{ postLiked ? '取消' : '点赞' }} {{ post.likesCount }}
                 </button>
-                <button @click="toggleComments" class="btn-action">
-                    💬 评论 {{ post.commentsCount }}
-                </button>
                 <button @click="reportPost" class="btn-action">🚩 举报</button>
                 <button @click="openShareDialog" class="btn-action">🔗 分享</button>
                 <button @click="forwardPost" class="btn-action">🔄 转发</button>
             </div>
-
-            <div v-if="showComments" class="comments-section">
+            <el-divider style="border-width: 8px; border-color:#E1FFFF; background-color: 	#E1FFFF;"></el-divider>
+            <div class="comments-section">
                 <h3>评论</h3>
-                <div v-for="comment in comments" :key="comment.commentID" class="comment-item">
-                    <p><strong>{{ comment.userName }}</strong>: {{ comment.content }}</p>
-                    <div class="comment-actions">
-                        <span @click="likeComment(comment.commentID)">
-                            👍 {{ comment.likedByCurrentUser ? '取消' : '点赞' }} {{ comment.likesCount }}
-                        </span>
-                        <span @click="setReplyTarget(comment)">回复</span>
-                        <span v-if="isCurrentUser(comment.userName)" @click="deleteComment(comment.commentID)">删除</span>
-                        <button @click="toggleReplies(comment)" class="btn-action">显示回复</button>
-                    </div>
-
-                    <!-- 评论的回复 -->
-                    <div v-if="comment.showReplies" v-for="reply in comment.replies" :key="reply.commentID"
-                        class="reply-item">
-                        <p><strong>@{{ reply.userName }}: </strong>{{ reply.content }}</p>
+                <div class="comments-container">
+                    <div v-for="comment in comments" :key="comment.commentID" class="comment-item">
+                        <p><strong>{{ comment.userName }}</strong>: {{ comment.content }}</p>
+                        <el-text class="comment-time">{{ comment.commentTime }}</el-text>
                         <div class="comment-actions">
-                            <span @click="likeComment(reply.commentID)">
-                                👍 {{ reply.likedByCurrentUser ? '取消' : '点赞' }} {{ reply.likesCount }}
+                            <span @click="likeComment(comment.commentID)" @mouseover="highlightCommentAction"
+                                @mouseleave="resetCommentAction">
+                                👍 {{ comment.likedByCurrentUser ? '取消' : '点赞' }} {{ comment.likesCount }}
                             </span>
-                            <span @click="setReplyTarget(reply)">回复</span>
-                            <span v-if="isCurrentUser(reply.userName)" @click="deleteReply(reply.commentID)">删除</span>
+                            <span @click="setReplyTarget(comment)" @mouseover="highlightCommentAction"
+                                @mouseleave="resetCommentAction">
+                                回复
+                            </span>
+                            <span v-if="isCurrentUser(comment.userName)"
+                                @click="deleteComment(comment.commentID)">删除</span>
+
+                            <button @click="toggleReplies(comment)" class="btn-if-reply">
+                                {{ comment.showReplies ? '隐藏回复↑' : '显示回复↓' }}
+                            </button>
+                        </div>
+
+                        <!-- 评论的回复 -->
+                        <div v-if="comment.showReplies">
+                            <div v-for="reply in comment.replies" :key="reply.commentID" class="reply-item">
+                                <p><strong>@{{ reply.userName }}: </strong>{{ reply.content }}</p>
+                                <div class="comment-actions">
+                                    <span @click="likeComment(reply.commentID)" @mouseover="highlightCommentAction"
+                                        @mouseleave="resetCommentAction">
+                                        👍 {{ reply.likedByCurrentUser ? '取消' : '点赞' }} {{ reply.likesCount }}
+                                    </span>
+                                    <span @click="setReplyTarget(reply)" @mouseover="highlightCommentAction"
+                                        @mouseleave="resetCommentAction">
+                                        回复
+                                    </span>
+                                    <span v-if="isCurrentUser(reply.userName)"
+                                        @click="deleteReply(reply.commentID)">删除</span>
+                                    <span class="comment-time">{{ reply.commentTime }}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -106,8 +121,9 @@
                     <el-text v-for="hotPost in hotPosts" :key="hotPost.postID" @click="goToPost(hotPost.postID)"
                         class="hot-post-title">
                         <icon-fire class="icon-fire-small" /> {{ hotPost.postTitle }}
+                        <el-divider />
                     </el-text>
-                    <el-divider />
+
                 </div>
             </div>
         </el-card>
@@ -145,6 +161,7 @@
 import axios from 'axios';
 import { IconArrowLeft, IconFire } from '@arco-design/web-vue/es/icon';
 import { EmojiButton } from '@joeattardi/emoji-button';
+import { colProps } from 'element-plus';
 
 export default {
     components: {
@@ -153,9 +170,10 @@ export default {
     },
     data() {
         return {
-            showComments: false,
+            showComments: true,
             newCommentText: "",
-            replyingTo: null, // 当前回复的目标
+            replyingTo: null,
+            currentUser: localStorage.getItem('name'),
             post: {
                 postID: null,
                 userID: null,
@@ -169,16 +187,9 @@ export default {
                 refrencePostID: null
             },
             postLiked: false,
-            // comment:{
-            //     commentID: null,
-            //     userID: null,
-            //     postID: null,
-            //     parentCommentID: null,
-            //     commentTime: null,
-            //     likesCount: null,
-            //     content: ''
-            // },
             comments: [],
+            relatedPosts: [],
+            hotPosts: [],
             shareDialogVisible: false,
             reportDialogVisible: false,
             shareLink: ""
@@ -187,18 +198,21 @@ export default {
     mounted() {
         this.emojiPicker = new EmojiButton({
             position: 'bottom-start',
-            zIndex: 9999, // 确保在所有元素之上
+            zIndex: 9999,
         });
         this.emojiPicker.on('emoji', selection => {
-            this.newCommentText += selection.emoji; // 确保加入的是表情符号而不是代码
+            this.newCommentText += selection.emoji;
         });
     },
     created() {
         this.fetchPostDetail();
+        this.fetchRelatedPosts();
+        this.fetchHotPosts();
     },
     methods: {
         isCurrentUser(userName) {
-            return this.currentUser === userName;
+            // 管理员具有删除一切评论的权限
+            return this.currentUser === userName || this.currentUser === 'admin';
         },
         fetchPostDetail() {
             const token = localStorage.getItem('token');
@@ -212,6 +226,7 @@ export default {
                 .then(response => {
                     this.post = response.data;
                     this.fetchComments(postID);
+                    console.log('Post details fetched successfully:', response.data);
                 })
                 .catch(error => {
                     console.error('获取帖子详情时发生错误:', error);
@@ -226,32 +241,46 @@ export default {
                 }
             })
                 .then(response => {
-                    this.comments = response.data;
+                    this.comments = response.data.map(comment => {
+                        return {
+                            ...comment,
+                            likedByCurrentUser: false,
+                            showReplies: false,
+                            replies: []
+                        };
+                    });
+                    console.log('Comments fetched successfully:', response.data);
                 })
                 .catch(error => {
                     console.error('获取评论时发生错误:', error);
                 });
         },
-        fetchReplies(commentID) {
+        fetchReplies(comment) {
             const token = localStorage.getItem('token');
             return axios.get(`http://localhost:8080/api/Comment/GetCommentByCommentID`, {
                 params: {
                     token: token,
-                    commentID: commentID
+                    commentID: comment.commentID
                 }
             })
                 .then(response => {
-                    return response.data;
+                    const replies = response.data.filter(reply => reply.parentCommentID === comment.commentID).map(reply => {
+                        return {
+                            ...reply,
+                            likedByCurrentUser: false  // 新增字段
+                        };
+                    });
+                    comment.replies = replies;
                 })
                 .catch(error => {
                     console.error('获取回复时发生错误:', error);
                 });
         },
+
         toggleReplies(comment) {
             if (!comment.showReplies) {
-                this.fetchReplies(comment.commentID).then(replies => {
-                    this.$set(comment, 'replies', replies);
-                    this.$set(comment, 'showReplies', true);
+                this.fetchReplies(comment).then(() => {
+                    comment.showReplies = true;
                 });
             } else {
                 comment.showReplies = false;
@@ -261,30 +290,33 @@ export default {
             this.$router.go(-1);
         },
         toggleLike(postID) {
-            //const token = this.$store.state.token;
             const token = localStorage.getItem('token');
             if (this.postLiked) {
                 axios.get('http://localhost:8080/api/Post/CancleLikePost', {
                     params: {
                         token: token,
-                        postID: postID }
+                        postID: postID
+                    }
                 })
                     .then(() => {
                         this.post.likesCount -= 1;
                         this.postLiked = false;
+                        console.log('Post unliked successfully');
                     })
                     .catch(error => {
                         console.error('取消点赞时发生错误:', error);
                     });
             } else {
-                axios.get('http://localhost:8080/api/Post/LikePost',  {
+                axios.get('http://localhost:8080/api/Post/LikePost', {
                     params: {
                         token: token,
-                        postID: postID }
+                        postID: postID
+                    }
                 })
                     .then(() => {
                         this.post.likesCount += 1;
                         this.postLiked = true;
+                        console.log('Post liked successfully');
                     })
                     .catch(error => {
                         console.error('点赞时发生错误:', error);
@@ -308,10 +340,10 @@ export default {
                 if (this.replyingTo) {
                     axios.post(`http://localhost:8080/api/Comment/ReplyComment?token=${token}`, newComment)
                         .then(response => {
-                            console.log("请求成功：",response.data)
                             if (response.data === '回复成功') {
                                 this.replyingTo.replies.push(newComment);
                                 this.replyingTo = null;
+                                console.log("Reply successful:", response.data)
                             } else {
                                 this.$message.error('回复失败');
                             }
@@ -326,6 +358,7 @@ export default {
                                 this.comments.push(newComment);
                                 this.post.commentsCount++;
                                 this.newCommentText = "";
+                                console.log('Comment published successfully');
                             } else {
                                 this.$message.error('发布评论失败');
                             }
@@ -338,25 +371,50 @@ export default {
         },
         likeComment(commentID) {
             const token = localStorage.getItem('token');
-            axios.get('http://localhost:8080/api/Comment/LikeComment', {
-                params: {
-                    token: token,
-                    commentID: commentID
-                }
-            })
-                .then(response => {
-                    if (response.data.message === '点赞成功') {
-                        const comment = this.comments.find(c => c.commentID === commentID);
-                        comment.likesCount++;
-                        comment.likedByCurrentUser = true;
-                    } else {
-                        this.$message.error('点赞失败');
+            const comment = this.comments.find(c => c.commentID === commentID) ||
+                this.comments.flatMap(c => c.replies).find(r => r.commentID === commentID);
+
+            if (comment.likedByCurrentUser) {
+                axios.get('http://localhost:8080/api/Comment/CancleLikeComment', {
+                    params: {
+                        token: token,
+                        commentID: commentID
                     }
                 })
-                .catch(error => {
-                    console.error('点赞时发生错误:', error);
-                });
+                    .then(response => {
+                        if (response.data.message === '取消点赞成功') {
+                            comment.likesCount--;
+                            comment.likedByCurrentUser = false;
+                            console.log('Comment unliked successfully');
+                        } else {
+                            this.$message.error('取消点赞失败');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('取消点赞时发生错误:', error);
+                    });
+            } else {
+                axios.get('http://localhost:8080/api/Comment/LikeComment', {
+                    params: {
+                        token: token,
+                        commentID: commentID
+                    }
+                })
+                    .then(response => {
+                        if (response.data.message === '点赞成功') {
+                            comment.likesCount++;
+                            comment.likedByCurrentUser = true;
+                            console.log('Comment liked successfully');
+                        } else {
+                            this.$message.error('点赞失败');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('点赞时发生错误:', error);
+                    });
+            }
         },
+
         deleteComment(commentID) {
             const token = localStorage.getItem('token');
             axios.delete('http://localhost:8080/api/Comment/DeleteComment', {
@@ -369,6 +427,7 @@ export default {
                     if (response.data.message === '评论删除成功') {
                         this.comments = this.comments.filter(c => c.commentID !== commentID);
                         this.post.commentsCount--;
+                        console.log('Comment deleted successfully');
                     } else {
                         this.$message.error('删除评论失败');
                     }
@@ -385,9 +444,6 @@ export default {
             if (!this.newCommentText.trim()) {
                 this.replyingTo = null;
             }
-        },
-        toggleComments() {
-            this.showComments = !this.showComments;
         },
         openShareDialog() {
             this.shareLink = `${window.location.origin}/post/${this.post.postID}`;
@@ -420,6 +476,7 @@ export default {
                 .then(response => {
                     if (response.data.message === '成功转发') {
                         this.post.forwardCount++;
+                        console.log('Post forwarded successfully');
                     } else {
                         console.error('转发帖子失败:', response.data.message);
                     }
@@ -432,10 +489,8 @@ export default {
             axios.get('http://localhost:8080/api/Post/GetAllPost')
                 .then(response => {
                     const allPosts = response.data;
-                    const sameCategoryPosts = allPosts.filter(
-                        post => post.postCategory === this.post.postCategory
-                    );
-                    this.relatedPosts = sameCategoryPosts.sort(() => 0.5 - Math.random()).slice(0, 5);
+                    this.relatedPosts = allPosts.sort(() => 0.5 - Math.random()).slice(0, 5);
+                    console.log('Related posts fetched successfully:', this.relatedPosts);
                 })
                 .catch(error => {
                     console.error('获取相关帖子时发生错误:', error);
@@ -448,6 +503,7 @@ export default {
                     this.hotPosts = allPosts
                         .sort((a, b) => (b.likesCount + b.commentsCount) - (a.likesCount + a.commentsCount))
                         .slice(0, 5);
+                    console.log('Hot posts fetched successfully:', this.hotPosts);
                 })
                 .catch(error => {
                     console.error('获取热帖时发生错误:', error);
@@ -460,13 +516,18 @@ export default {
             document.body.style.overflow = this.emojiPicker.isOpen ? '' : 'hidden';
             this.emojiPicker.togglePicker(this.$refs.emojiButton);
         },
+        highlightCommentAction(event) {
+            event.target.style.backgroundColor = '#f0f0f0';
+            event.target.style.cursor = 'pointer';
+        },
+        resetCommentAction(event) {
+            event.target.style.backgroundColor = '';
+            event.target.style.cursor = '';
+        },
         beforeDestroy() {
-            // 恢复滚动条状态
             document.body.style.overflow = '';
         },
     },
-
-
 }
 </script>
 
@@ -528,6 +589,7 @@ export default {
     font-size: 16px;
     line-height: 1.6;
     color: #444;
+    overflow-wrap: break-word
 }
 
 .post-actions {
@@ -554,19 +616,32 @@ export default {
     border: none;
 }
 
-.comments-section {
-    margin-top: 40px;
-    width: 800px;
+.btn-if-reply {
+    background-color: transparent;
+    color: black;
+    padding: 0 0;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    border: none;
 }
+
+.comments-section {
+    width: 100%;
+    max-height: 400px;
+    overflow-y: auto;
+    margin-top: 20px;
+}
+
 
 .comment-item,
 .reply-item {
-    margin-bottom: 15px;
+    margin-bottom: 5px;
     padding: 10px;
     background-color: #f9f9f9;
     border-radius: 5px;
-    border: 1px solid #ddd;
-    width: 800px;
+    border: none;
+
 }
 
 .comment-actions {
@@ -575,6 +650,17 @@ export default {
     gap: 10px;
     font-size: 14px;
     color: #555;
+}
+
+.comment-actions span:hover {
+    cursor: pointer;
+    background-color: #f0f0f0;
+}
+
+.comment-time {
+    margin-left: 0;
+    font-size: 12px;
+    color: #999;
 }
 
 .replying-to {
@@ -640,7 +726,6 @@ textarea {
 
 .back-button:hover {
     background-color: #33ff33;
-    /* 鼠标悬停时的背景颜色 */
 }
 
 .card {
@@ -673,6 +758,15 @@ textarea {
     text-decoration: underline;
 }
 
+.el-divider {
+    margin: 0;
+    border-top: 1px solid #ddd;
+    margin-bottom: 20px;
+    margin-top: 20px;
+    /* 添加空隙 */
+}
+
+
 .row {
     display: flex;
     align-items: flex-start;
@@ -683,6 +777,7 @@ textarea {
 .right-sidebar {
     margin-top: 65px;
     width: 300px;
+    height: max-content;
     background-color: transparent;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
     margin-bottom: 10px;
@@ -693,8 +788,8 @@ textarea {
 }
 
 .hot-posts-content {
-    padding-left: 16px;
-    padding-right: 16px;
+    padding-left: 5px;
+    padding-right: 5px;
 }
 
 .icon-fire-small {

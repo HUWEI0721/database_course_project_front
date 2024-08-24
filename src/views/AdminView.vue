@@ -16,7 +16,7 @@
                                         </el-icon>
                                         首页
                                     </el-dropdown-item>
-                                    <el-dropdown-item @click="openUser">
+                                    <el-dropdown-item @click="openUser(userID)">
                                         <el-icon>
                                             <UserFilled />
                                         </el-icon>
@@ -50,12 +50,14 @@
                         <el-menu default-active="1" class="el-menu-vertical-demo" @open="handleOpen"
                             @close="handleClose">
                             <el-menu-item index="1" @click="active = 1">
-                                <el-icon><icon-menu /></el-icon>
+                                <el-icon>
+                                    <IconMenu />
+                                </el-icon>
                                 <span>用户管理</span>
                             </el-menu-item>
                             <el-menu-item index="2" @click="active = 2">
                                 <el-icon>
-                                    <setting />
+                                    <Setting />
                                 </el-icon>
                                 <span>内容管理</span>
                             </el-menu-item>
@@ -97,8 +99,8 @@
                                 <el-table-column prop="userName" label="作者"></el-table-column>
                                 <el-table-column prop="postCategory" label="类型">
                                     <template #default="{ row }">
-                                        <el-tag :type="row.postCategory === 'post' ? 'info' : 'warning'">{{
-                                            row.postCategory === 'post'
+                                        <el-tag :type="row.postID ? 'info' : 'warning'">{{
+                                            row.postID
                                                 ? '帖子' : '评论' }}</el-tag>
                                     </template>
                                 </el-table-column>
@@ -117,7 +119,7 @@
                                     <template #default="{ row }">
                                         <el-button size="small" type="danger" @click="deleteContent(row)"
                                             :disabled="row.status === '已删除'">删除</el-button>
-                                        <el-button size="small" @click="getComments(row)"
+                                        <el-button size="small" @click="navigateToPost(row)"
                                             :disabled="row.status === '已删除'">查看评论</el-button>
                                     </template>
                                 </el-table-column>
@@ -134,6 +136,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from "vue-router";
 import axios from 'axios';
+import { House, UserFilled, Setting, SwitchButton } from '@element-plus/icons-vue';
 import { IconMenu } from '@arco-design/web-vue/es/icon';
 
 const router = useRouter();
@@ -225,11 +228,12 @@ function getTagType(row) {
 // 用户管理操作
 async function restrictUser(user) {
     try {
-        const response = await axios.get('http://localhost:8080/api/User/BanUser', {
-            params:{
-            token: localStorage.getItem('token'),
-            userID: user.userID,
-        }});
+        const response = await axios.get('http://localhost:8080/api/User/BanPost', {
+            params: {
+                token: localStorage.getItem('token'),
+                userID: user.userID,
+            }
+        });
         if (response.data.message === '禁言成功') {
             user.status = '已禁言';
         }
@@ -241,11 +245,12 @@ async function restrictUser(user) {
 
 async function deactivateUser(user) {
     try {
-        const response = await axios.get('http://localhost:8080/api/User/RemoveUser',  {
-            params:{
-            token: localStorage.getItem('token'),
-            userID: user.userID,
-        }});
+        const response = await axios.get('http://localhost:8080/api/User/RemoveUser', {
+            params: {
+                token: localStorage.getItem('token'),
+                userID: user.userID,
+            }
+        });
         if (response.data.message === '删除成功') {
             user.status = '已删除';
         }
@@ -258,79 +263,40 @@ async function deactivateUser(user) {
 // 内容管理操作
 async function deleteContent(content) {
     try {
-        const response =null;
-        console.log(localStorage.getItem('token'));
-        console.log(content.postID);
-        if(content.postCategory === 'post'){
-            console.log('post');
-            response = await axios.delete('http://localhost:8080/api/Post/DeletePostByPostID',{params:{
-                token: localStorage.getItem('token'),
-                postID: content.postID,
-            }});
+        let response;
+        if (content.postID) {
+            response = await axios.delete('http://localhost:8080/api/Post/DeletePostByPostID', {
+                params: {
+                    token: localStorage.getItem('token'),
+                    postID: content.postID,
+                }
+            });
             if (response.data.message === '删除帖子成功') {
-            content.status = '已删除';
-        }
-        console.log(`删除内容成功: ${response.data.message}`);
-        }
-        else{
-            response = await axios.delete('http://localhost:8080/api/Comment/DeleteComment',{params:{
-                token: localStorage.getItem('token'),
-                commentID: content.commentID,
-            }})
+                content.status = '已删除';
+            }
+        } else if (content.commentID) {
+            response = await axios.delete('http://localhost:8080/api/Comment/DeleteComment', {
+                params: {
+                    token: localStorage.getItem('token'),
+                    commentID: content.commentID,
+                }
+            })
             if (response.data.message === '评论删除成功') {
-            content.status = '已删除';
+                content.status = '已删除';
+            }
         }
         console.log(`删除内容成功: ${response.data.message}`);
-        }
     } catch (error) {
         console.error('删除内容失败', error);
     }
 }
 
-// 查看评论操作
-async function getComments(row) {
-    try {
-        const mainComments = await fetchMainComments(row.postID);
-        for (let comment of mainComments) {
-            comment.replies = await fetchCommentReplies(comment.commentID);
-        }
-        article.value.title = row.postTitle;
-        article.value.comments = mainComments;
-        dialogVisible.value = true;
-    } catch (error) {
-        console.error('获取评论失败', error);
-    }
-}
-
-// 获取主评论信息
-async function fetchMainComments(postID) {
-    try {
-        const response = await axios.get('http://localhost:8080/api/Comment/GetCommentByPostID', {
-            params: {
-                token: localStorage.getItem('token'),
-                postID: postID,
-            },
+// 跳转到帖子操作
+function navigateToPost(content) {
+    if (content.postID) {
+        router.push({
+            path: `/post/${content.postID}`,
         });
-        return response.data;
-    } catch (error) {
-        console.error('获取主评论信息失败', error);
-        return [];
-    }
-}
-
-// 获取评论的回复
-async function fetchCommentReplies(commentID) {
-    try {
-        const response = await axios.get('http://localhost:8080/api/Comment/GetCommentByCommentID', {
-            params: {
-                token: localStorage.getItem('token'),
-                commentID: commentID,
-            },
-        });
-        return response.data;
-    } catch (error) {
-        console.error('获取评论回复失败', error);
-        return [];
     }
 }
 
@@ -343,9 +309,9 @@ const handleClose = (key, keyPath) => {
     console.log(key, keyPath);
 };
 
-const openUser = () => {
+const openUser = (userID) => {
     router.push({
-        path: "/user/:userID",
+        path: `/user/${userID}`,
     });
 };
 
