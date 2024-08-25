@@ -95,7 +95,7 @@
                 </div>
 
                 <!-- 输入框和提交按钮 -->
-                <div class="input-container">
+                <div class="input-container fixed-input">
                     <textarea v-model="newCommentText" placeholder="写下你的评论..." @focus="clearReplyTarget"></textarea>
                     <div class="actions">
                         <button class="emoji-button" ref="emojiButton" @click="toggleEmojiPicker">😊</button>
@@ -264,6 +264,7 @@ export default {
                 }
             })
                 .then(response => {
+                    console.log('Replies fetched successfully:', response.data);
                     const replies = response.data.filter(reply => reply.parentCommentID === comment.commentID).map(reply => {
                         return {
                             ...reply,
@@ -343,6 +344,7 @@ export default {
                             if (response.data === '回复成功') {
                                 this.replyingTo.replies.push(newComment);
                                 this.replyingTo = null;
+                                this.newCommentText = ""; // 清空输入框
                                 console.log("Reply successful:", response.data)
                             } else {
                                 this.$message.error('回复失败');
@@ -357,7 +359,7 @@ export default {
                             if (response.data === '发布评论成功') {
                                 this.comments.push(newComment);
                                 this.post.commentsCount++;
-                                this.newCommentText = "";
+                                this.newCommentText = ""; // 清空输入框
                                 console.log('Comment published successfully');
                             } else {
                                 this.$message.error('发布评论失败');
@@ -374,7 +376,13 @@ export default {
             const comment = this.comments.find(c => c.commentID === commentID) ||
                 this.comments.flatMap(c => c.replies).find(r => r.commentID === commentID);
 
+            if (!comment) {
+                console.error('评论未找到');
+                return;
+            }
+
             if (comment.likedByCurrentUser) {
+                // 取消点赞
                 axios.get('http://localhost:8080/api/Comment/CancleLikeComment', {
                     params: {
                         token: token,
@@ -382,18 +390,20 @@ export default {
                     }
                 })
                     .then(response => {
-                        if (response.data.message === '取消点赞成功') {
+                        if (response.data === '取消点赞成功') {
                             comment.likesCount--;
                             comment.likedByCurrentUser = false;
-                            console.log('Comment unliked successfully');
+                            this.$message.success('取消点赞成功');
                         } else {
                             this.$message.error('取消点赞失败');
                         }
                     })
                     .catch(error => {
                         console.error('取消点赞时发生错误:', error);
+                        this.$message.error('取消点赞时发生错误');
                     });
             } else {
+                // 点赞
                 axios.get('http://localhost:8080/api/Comment/LikeComment', {
                     params: {
                         token: token,
@@ -401,20 +411,20 @@ export default {
                     }
                 })
                     .then(response => {
-                        if (response.data.message === '点赞成功') {
+                        if (response.data === '点赞成功') {
                             comment.likesCount++;
                             comment.likedByCurrentUser = true;
-                            console.log('Comment liked successfully');
+                            this.$message.success('点赞成功');
                         } else {
                             this.$message.error('点赞失败');
                         }
                     })
                     .catch(error => {
                         console.error('点赞时发生错误:', error);
+                        this.$message.error('点赞时发生错误');
                     });
             }
         },
-
         deleteComment(commentID) {
             const token = localStorage.getItem('token');
             axios.delete('http://localhost:8080/api/Comment/DeleteComment', {
@@ -427,6 +437,7 @@ export default {
                     if (response.data.message === '评论删除成功') {
                         this.comments = this.comments.filter(c => c.commentID !== commentID);
                         this.post.commentsCount--;
+                        this.$message.success('评论已删除');
                         console.log('Comment deleted successfully');
                     } else {
                         this.$message.error('删除评论失败');
@@ -486,7 +497,8 @@ export default {
                 });
         },
         fetchRelatedPosts() {
-            axios.get('http://localhost:8080/api/Post/GetAllPost')
+            const token = localStorage.getItem('token');
+            axios.get(`http://localhost:8080/api/Post/GetAllPost?token=${token}`)
                 .then(response => {
                     const allPosts = response.data;
                     this.relatedPosts = allPosts.sort(() => 0.5 - Math.random()).slice(0, 5);
@@ -497,7 +509,8 @@ export default {
                 });
         },
         fetchHotPosts() {
-            axios.get('http://localhost:8080/api/Post/GetAllPost')
+            const token = localStorage.getItem('token');
+            axios.get(`http://localhost:8080/api/Post/GetAllPost?token=${token}`)
                 .then(response => {
                     const allPosts = response.data;
                     this.hotPosts = allPosts
@@ -670,7 +683,7 @@ export default {
 
 textarea {
     width: 100%;
-    height: 60px;
+    height: 80px;
     margin-top: 10px;
     padding: 10px;
     border-radius: 5px;
@@ -795,5 +808,20 @@ textarea {
 .icon-fire-small {
     font-size: 16px;
     margin-right: 8px;
+}
+
+/* 新增样式 */
+.fixed-input {
+    position: fixed;
+    bottom: 80px;
+    /* 根据实际情况调整 */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 800px;
+    /* 与 post-container 的宽度一致 */
+    z-index: 101;
+    /* 确保在其他元素之上 */
+    background-color: transparent;
+    padding: 0;
 }
 </style>

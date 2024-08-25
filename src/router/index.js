@@ -11,7 +11,8 @@ const router = createRouter({
   routes: [
     // 登录界面
     {
-      path: '/login',
+      //path: '/login',
+      path: '/',
       name: 'LoginView',
       component: LoginView
     },
@@ -46,8 +47,8 @@ const router = createRouter({
     },
     // 管理员界面
     {
-      //path: '/admin',
-      path: '/',
+      path: '/admin',
+      //path: '/',
       name: 'AdminView',
       component: AdminView,
       props: true

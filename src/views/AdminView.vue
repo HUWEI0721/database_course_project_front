@@ -70,11 +70,12 @@
                             <el-table :data="filteredUsers" style="width: 100%">
                                 <el-table-column prop="userName" label="用户名"></el-table-column>
                                 <el-table-column prop="userID" label="用户ID"></el-table-column>
-                                <el-table-column prop="registrationTime" label="注册日期">
-                                    <template #default="{ row }">
-                                        {{ formatDate(row.registrationTime) }}
-                                    </template>
+                                <el-table-column prop="isMember" label="是否会员">
+                                <template #default="{ row }">
+                                    {{ row.isMember === 1 ? '是' : '否' }}
+                                </template>
                                 </el-table-column>
+
                                 <el-table-column prop="status" label="状态">
                                     <template #default="{ row }">
                                         <el-tag :type="getTagType(row)" :style="getTagStyle(row)">{{ row.status
@@ -228,16 +229,16 @@ function getTagType(row) {
 // 用户管理操作
 async function restrictUser(user) {
     try {
-        const response = await axios.get('http://localhost:8080/api/User/BanPost', {
+        const response = await axios.get('http://localhost:8080/api/User/BanUser', {
             params: {
                 token: localStorage.getItem('token'),
                 userID: user.userID,
             }
         });
-        if (response.data.message === '禁言成功') {
+        if (response.data === '禁言成功') {
             user.status = '已禁言';
         }
-        console.log(`限制用户 ${user.userName} 的言论: ${response.data.message}`);
+        console.log(`限制用户 ${user.userName} 的言论: ${response.data}`);
     } catch (error) {
         console.error('限制用户言论失败', error);
     }
@@ -251,10 +252,10 @@ async function deactivateUser(user) {
                 userID: user.userID,
             }
         });
-        if (response.data.message === '删除成功') {
+        if (response.data === '删除成功') {
             user.status = '已删除';
         }
-        console.log(`删除用户 ${user.userName}: ${response.data.message}`);
+        console.log(`删除用户 ${user.userName}: ${response.data}`);
     } catch (error) {
         console.error('删除用户失败', error);
     }
@@ -281,7 +282,7 @@ async function deleteContent(content) {
                     commentID: content.commentID,
                 }
             })
-            if (response.data.message === '评论删除成功') {
+            if (response.data === '评论删除成功') {
                 content.status = '已删除';
             }
         }
